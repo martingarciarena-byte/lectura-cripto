@@ -1,0 +1,1518 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gráficos de cripto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
+
+<style>
+  /* Mesa de gráficos: lista de pares a la izquierda, un gráfico de cinco
+     paneles a la derecha. Mismo sistema que «Lectura de cripto». */
+  :root {
+    --ground: #f1f4f3;
+    --surface: #ffffff;
+    --surface-2: #e8ecea;
+    --line: #d2dad7;
+    --grid: #e6ebe9;
+    --ink: #141918;
+    --ink-soft: #566260;
+    --ink-faint: #879290;
+    --accent: #8f550f;
+    --accent-soft: #f2e5d3;
+    --up: #0e7a4d;
+    --up-soft: #8fd3b6;
+    --down: #b53550;
+    --down-soft: #eca9b6;
+    --flat: #74807d;
+    --ema-r: #2962ff;
+    --ema-l: #d9821e;
+    --ema-200: #7b4fc9;
+    --macd: #2962ff;
+    --senal: #d9821e;
+    /* Los colores de Pine (color.lime, .red, .aqua, .blue, .maroon, .yellow)
+       del CM MACD de ChrisMoody: iguales en los dos temas, como en TradingView. */
+    --cm-lime: #00e676; --cm-red: #ff5252; --cm-aqua: #00bcd4;
+    --cm-blue: #2196f3; --cm-maroon: #880e4f; --cm-yellow: #ffeb3b;
+    --rsi: #7b4fc9;
+    /* Divergencias: un color por indicador, distinto de todas las líneas
+       del gráfico. El tipo lo dice la flecha. */
+    --div-sqz: #c2185b;
+    --div-macd: #00838f;
+    --div-rsi: #b07d00;
+    --div-adx: #6d4c41;
+    --ui: "Archivo", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #111614; --surface: #191f1d; --surface-2: #222a27; --line: #2e3835; --grid: #1f2724;
+      --ink: #e7edeb; --ink-soft: #9ba6a3; --ink-faint: #6c7775;
+      --accent: #d9a05a; --accent-soft: #34291b;
+      --up: #40bb85; --up-soft: #2c6b50; --down: #e06b81; --down-soft: #7a3a47; --flat: #808a87;
+      --ema-r: #6b93ff; --ema-l: #e8a04a; --ema-200: #a78bea; --macd: #6b93ff; --senal: #e8a04a; --rsi: #a78bea;
+      --div-sqz: #f06292; --div-macd: #4dd0e1; --div-rsi: #ffd54f; --div-adx: #bcaaa4;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #111614; --surface: #191f1d; --surface-2: #222a27; --line: #2e3835; --grid: #1f2724;
+    --ink: #e7edeb; --ink-soft: #9ba6a3; --ink-faint: #6c7775;
+    --accent: #d9a05a; --accent-soft: #34291b;
+    --up: #40bb85; --up-soft: #2c6b50; --down: #e06b81; --down-soft: #7a3a47; --flat: #808a87;
+    --ema-r: #6b93ff; --ema-l: #e8a04a; --ema-200: #a78bea; --macd: #6b93ff; --senal: #e8a04a; --rsi: #a78bea;
+      --div-sqz: #f06292; --div-macd: #4dd0e1; --div-rsi: #ffd54f; --div-adx: #bcaaa4;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--ground); color: var(--ink); font-family: var(--ui); margin: 0; line-height: 1.45; }
+  .marco { max-width: 1440px; margin: 0 auto; padding: 0 16px; padding-block: 16px 40px; }
+
+  header.cab {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 14px;
+  }
+  header.cab h1 { font-size: clamp(1.25rem, 3vw, 1.7rem); margin: 0; letter-spacing: -0.02em; }
+  .estado {
+    font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .estado::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint);
+  }
+  .derecha { margin-left: auto; display: flex; gap: 6px; }
+  button { font: inherit; cursor: pointer; }
+  .boton {
+    font-family: var(--mono); font-size: 0.74rem; color: var(--ink-soft);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 5px 10px;
+  }
+  .boton:hover { color: var(--ink); border-color: var(--ink-faint); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .mesa { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .mesa { grid-template-columns: minmax(0, 1fr); } }
+
+  /* Ordenar la lista por el puntaje general o el de una temporalidad. */
+  .columna-pares { min-width: 0; }
+  .orden { display: flex; gap: 4px; margin: 0 0 6px; }
+  .orden select { flex: 1; min-width: 0; }
+  .orden button { white-space: nowrap; }
+  .pares { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  @media (max-width: 860px) {
+    .pares { flex-direction: row; overflow-x: auto; gap: 1px; }
+    .pares .par { flex: 0 0 auto; }
+  }
+  .par {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline;
+    background: var(--surface); border: 0; padding: 7px 10px; text-align: left; color: var(--ink);
+  }
+  .par .n { font-weight: 600; font-size: 0.86rem; }
+  .par .p { font-family: var(--mono); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+  .par[aria-selected="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .par:hover { background: var(--surface-2); }
+  /* Los gráficos de todas las divergencias pasadas, aparte, al pie de la lista. */
+  .grupo {
+    background: var(--surface-2); color: var(--ink-soft); padding: 8px 10px 4px;
+    font-family: var(--mono); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  @media (max-width: 860px) { .grupo { flex: 0 0 auto; display: flex; align-items: center; } }
+  .alza { color: var(--up); } .baja { color: var(--down); } .plano { color: var(--flat); }
+
+  .panel { min-width: 0; }
+  .titulo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 8px; }
+  .titulo h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.01em; }
+  .titulo .precio { font-family: var(--mono); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+  .titulo .meta { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); }
+  .tfs { display: flex; gap: 2px; margin-left: auto; }
+  .tf {
+    font-family: var(--mono); font-size: 0.78rem; background: var(--surface-2); color: var(--ink-soft);
+    border: 1px solid var(--line); padding: 5px 12px;
+  }
+  .tf .s { margin-left: 6px; }
+  .tf[aria-selected="true"] { background: var(--surface); color: var(--ink); border-color: var(--ink); }
+
+  .leyenda {
+    font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft); font-variant-numeric: tabular-nums;
+    display: flex; flex-wrap: wrap; gap: 4px 14px; min-height: 1.4em; margin-bottom: 4px;
+  }
+  .leyenda b { color: var(--ink); font-weight: 500; }
+  .grafico {
+    height: clamp(620px, 84vh, 1000px); background: var(--surface); border: 1px solid var(--line);
+    position: relative;
+  }
+  .claves { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0;
+    font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft); }
+  .claves i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 5px; }
+  .claves i.puntos { height: 0; border-top: 2px dotted var(--ink-soft); }
+  .claves i.guiones { height: 0; border-top: 2px dashed var(--ink-soft); }
+  /* Cada clave prende o apaga sus divergencias. */
+  .clave { font: inherit; color: inherit; background: none; border: 0; padding: 0; }
+  .clave[aria-pressed="false"] { opacity: 0.45; text-decoration: line-through; }
+  .clave:hover { color: var(--ink); }
+  .detalle { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft); min-height: 1.45em; margin: 0 0 4px; }
+  .detalle .pista { color: var(--ink-faint); }
+  .nota { font-size: 0.78rem; color: var(--ink-soft); margin: 10px 0 0; max-width: 90ch; }
+  .nota code { font-family: var(--mono); font-size: 0.74rem; background: var(--surface-2); padding: 1px 5px; }
+  .rotulo {
+    position: absolute; left: 8px; z-index: 3; pointer-events: none;
+    font-family: var(--mono); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--ink-soft); background: color-mix(in srgb, var(--surface) 82%, transparent);
+    padding: 1px 6px; border-radius: 2px;
+  }
+  .error { font-family: var(--mono); font-size: 0.8rem; color: var(--down); padding: 20px; }
+  .cargando { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft); margin: 0 0 4px; }
+  .cargando:empty { display: none; }
+</style>
+
+<div class="marco">
+  <header class="cab">
+    <h1>Gráficos de cripto</h1>
+    <span class="estado" id="estado"></span>
+    <div class="derecha">
+      <a class="boton" href="lectura.html" style="text-decoration:none">Lectura</a>
+      <button class="boton" id="actualizar" type="button" hidden>Actualizar</button>
+      <button class="boton" id="actualizar-vivo" type="button" hidden title="Trae de Binance las velas nuevas de BTC y ETH y busca sus divergencias">Actualizar BTC y ETH</button>
+      <button class="boton" id="escala" type="button" aria-pressed="true">Escala log</button>
+      <button class="boton" id="tema" type="button">Tema</button>
+    </div>
+  </header>
+
+  <div class="mesa">
+    <div class="columna-pares">
+      <div class="orden">
+        <select class="boton" id="orden-por" aria-label="Ordenar los pares por">
+          <option value="general">General</option>
+          <option value="4h">4 horas</option>
+          <option value="1d">Diario</option>
+          <option value="1w">Semanal</option>
+        </select>
+        <button class="boton" id="orden-dir" type="button" aria-label="Invertir el orden"></button>
+      </div>
+      <nav class="pares" id="pares" role="tablist" aria-label="Pares"></nav>
+    </div>
+    <section class="panel">
+      <div class="titulo">
+        <h2 id="nombre"></h2>
+        <span class="precio" id="precio"></span>
+        <span class="meta" id="meta"></span>
+        <div class="tfs" id="tfs" role="tablist" aria-label="Temporalidad"></div>
+      </div>
+      <div class="leyenda" id="leyenda"></div>
+      <p class="detalle" id="detalle"></p>
+      <p class="cargando" id="estado-velas" role="status" aria-live="polite"></p>
+      <div class="grafico" id="grafico"></div>
+      <p class="claves" id="claves"></p>
+      <p class="nota" id="nota"></p>
+    </section>
+  </div>
+</div>
+
+<script id="datos" type="application/json">{"generado":"2026-10-31T05:37:27.948769+00:00","params":{"ema_fast":10,"ema_slow":55,"kc_length":20,"rsi_length":14,"macd_fast":12,"macd_slow":26,"macd_signal":9,"adx_length":14,"adx_smoothing":14},"pares":[{"simbolo":"BTCUSDT","mercado":"spot","precio":77243.88,"puntaje":2.05,"sesgo":"neutral","accion":false,"tfs":{"4h":{"puntaje":-5.9,"niveles":{"resistencias":[{"valor":79220.74},{"valor":79710.0},{"valor":80186.57374320902}],"soportes":[{"valor":76500.11}],"poc":81682.2065},"divergencias":[],"empalme":"Antes del 17/08/2017, velas de Bitstamp BTCUSD, desde el 18/08/2011.","estado":null,"archivo":"velas/BTCUSDT_4h.json","n":33300},"1d":{"puntaje":-0.64,"niveles":{"resistencias":[{"valor":79220.74},{"valor":79800.0},{"valor":80295.7143486201}],"soportes":[{"valor":76888.0},{"valor":76480.36159387842},{"valor":76046.58}],"poc":64081.43108333333},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-10-12T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":81750.09,"precio_nuevo":76325.98,"valor_anterior":-577.16157,"valor_nuevo":-489.28562,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-12T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 17/08/2017, velas de Bitstamp BTCUSD, desde el 18/08/2011.","estado":{"estado":"Rango","fuerza":false,"texto":"Rango","velas":21,"duracion":"21 días","desde":"2026-10-10T00:00:00+00:00","puntaje_rango":0.8,"adx":19.2,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado"],"senales_no":["volumen bajo o decreciente"],"piso":76325.98,"techo":84898.0,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/BTCUSDT_1d.json","n":5553},"1w":{"puntaje":6.5,"niveles":{"resistencias":[{"valor":79006.51587209353},{"valor":80600.0},{"valor":82850.0}],"soportes":[{"valor":76606.0},{"valor":76000.0},{"valor":74967.97}],"poc":65125.16625000001},"divergencias":[],"empalme":"Antes del 14/08/2017, velas de Bitstamp BTCUSD, desde el 15/08/2011.","estado":{"estado":"Alcista","fuerza":false,"texto":"Alcista sin fuerza","velas":3,"duracion":"3 semanas","desde":"2026-10-05T00:00:00+00:00","puntaje_rango":0.2,"adx":26.5,"senales":["ADX con pendiente negativa"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/BTCUSDT_1w.json","n":793},"1M":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 17/08/2017, velas de Bitstamp BTCUSD, desde el 18/08/2011.","estado":null,"archivo":"velas/BTCUSDT_1M.json","n":182}}},{"simbolo":"ETHUSDT","mercado":"spot","precio":2241.28,"puntaje":-4.3,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-7.05,"niveles":{"resistencias":[{"valor":2262.49},{"valor":2282.46},{"valor":2294.73}],"soportes":[{"valor":2174.08}],"poc":2500.840416666667},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-10-24T16:00:00+00:00","hasta":"2026-10-31T00:00:00+00:00","precio_anterior":2294.84,"precio_nuevo":2239.38,"valor_anterior":-88.805736,"valor_nuevo":-73.784089,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T16:00:00+00:00","hasta_valor":"2026-10-31T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 17/08/2017, velas de Bitfinex ETHUSD y, antes, Kraken XETHZUSD, desde el 01/01/2016.","estado":null,"archivo":"velas/ETHUSDT_4h.json","n":23624},"1d":{"puntaje":-7.44,"niveles":{"resistencias":[{"valor":2282.46},{"valor":2318.0},{"valor":2356.41}],"soportes":[{"valor":1981.24},{"valor":1956.45},{"valor":1946.52}],"poc":2482.8258333333333},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-10-10T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":2486.03,"precio_nuevo":2174.08,"valor_anterior":-36.480722,"valor_nuevo":-12.169802,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-10T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 17/08/2017, velas de Bitfinex ETHUSD y, antes, Kraken XETHZUSD, desde el 01/01/2016.","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":2,"duracion":"2 días","desde":"2026-10-29T00:00:00+00:00","puntaje_rango":0.6,"adx":29.9,"senales":["EMA 55 horizontal","Squeeze activado prolongado","volumen bajo o decreciente"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/ETHUSDT_1d.json","n":3949},"1w":{"puntaje":-1.3,"niveles":{"resistencias":[{"valor":2357.59},{"valor":2386.02},{"valor":2439.5957213855654}],"soportes":[{"valor":2150.55},{"valor":2111.89},{"valor":1986.587}],"poc":1986.587},"divergencias":[],"empalme":"Antes del 14/08/2017, velas de Bitfinex ETHUSD y, antes, Kraken XETHZUSD, desde el 04/01/2016.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":2,"duracion":"2 semanas","desde":"2026-10-12T00:00:00+00:00","puntaje_rango":0.2,"adx":20.0,"senales":["ADX con pendiente negativa"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/ETHUSDT_1w.json","n":564},"1M":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 17/08/2017, velas de Bitfinex ETHUSD y, antes, Kraken XETHZUSD, desde el 01/01/2016.","estado":null,"archivo":"velas/ETHUSDT_1M.json","n":130}}},{"simbolo":"SOLUSDT","mercado":"spot","precio":96.09,"puntaje":-2.76,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-7.05,"niveles":{"resistencias":[{"valor":97.053},{"valor":98.62},{"valor":99.16}],"soportes":[{"valor":92.34}],"poc":104.1225},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-31T00:00:00+00:00","precio_anterior":98.62,"precio_nuevo":96.15,"valor_anterior":-4.1699536,"valor_nuevo":-3.669725,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-31T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/SOLUSDT_4h.json","n":13632},"1d":{"puntaje":-6.84,"niveles":{"resistencias":[{"valor":97.38},{"valor":98.0},{"valor":98.62}],"soportes":[{"valor":95.82},{"valor":87.79716666666667},{"valor":78.88}],"poc":102.74891666666667},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-10-14T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":103.52,"precio_nuevo":92.34,"valor_anterior":-2.2151244,"valor_nuevo":-0.71081021,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-14T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":2,"duracion":"2 días","desde":"2026-10-29T00:00:00+00:00","puntaje_rango":0.4,"adx":29.0,"senales":["EMA 55 horizontal","Squeeze activado prolongado"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/SOLUSDT_1d.json","n":2272},"1w":{"puntaje":1.4,"niveles":{"resistencias":[{"valor":97.68},{"valor":98.41},{"valor":108.14794867724095}],"soportes":[{"valor":95.26},{"valor":83.98},{"valor":83.12}],"poc":83.12},"divergencias":[],"empalme":"","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":8,"duracion":"8 semanas","desde":"2026-08-31T00:00:00+00:00","puntaje_rango":0.2,"adx":26.3,"senales":["ADX con pendiente negativa"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/SOLUSDT_1w.json","n":324}}},{"simbolo":"BNBUSDT","mercado":"spot","precio":703.4,"puntaje":1.32,"sesgo":"neutral","accion":false,"tfs":{"4h":{"puntaje":-6.55,"niveles":{"resistencias":[{"valor":705.86},{"valor":710.15},{"valor":717.07}],"soportes":[{"valor":701.665},{"valor":680.0}],"poc":743.91175},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"bajista","estado":"confirmada","desde":"2026-10-21T12:00:00+00:00","hasta":"2026-10-28T20:00:00+00:00","precio_anterior":750.48,"precio_nuevo":760.0,"valor_anterior":2.6404597,"valor_nuevo":1.4194313,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-21T12:00:00+00:00","hasta_valor":"2026-10-28T20:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"bajista","estado":"confirmada","desde":"2026-10-21T16:00:00+00:00","hasta":"2026-10-28T20:00:00+00:00","precio_anterior":751.86,"precio_nuevo":760.0,"valor_anterior":21.968982,"valor_nuevo":9.5725607,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-21T16:00:00+00:00","hasta_valor":"2026-10-28T20:00:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/BNBUSDT_4h.json","n":19671},"1d":{"puntaje":-1.0,"niveles":{"resistencias":[{"valor":703.62},{"valor":717.07},{"valor":726.08}],"soportes":[{"valor":692.5581755917378},{"valor":674.6},{"valor":620.55}],"poc":574.6700000000001},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-10-12T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":732.26,"precio_nuevo":682.16,"valor_anterior":-7.105891,"valor_nuevo":-2.4862164,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-12T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":1,"duracion":"1 día","desde":"2026-10-30T00:00:00+00:00","puntaje_rango":0.4,"adx":23.6,"senales":["EMA 55 horizontal","Squeeze activado prolongado"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/BNBUSDT_1d.json","n":3281},"1w":{"puntaje":5.5,"niveles":{"resistencias":[{"valor":732.0},{"valor":745.29},{"valor":790.79}],"soportes":[{"valor":701.4363718731271},{"valor":697.73},{"valor":687.82}],"poc":617.91875},"divergencias":[],"empalme":"","estado":{"estado":"Alcista","fuerza":true,"texto":"Alcista con fuerza","velas":4,"duracion":"4 semanas","desde":"2026-09-28T00:00:00+00:00","puntaje_rango":0.2,"adx":25.5,"senales":["volumen bajo o decreciente"],"senales_no":["ADX con pendiente negativa","MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado"],"piso":null,"techo":null,"disparo_hace":5,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/BNBUSDT_1w.json","n":468}}},{"simbolo":"XRPUSDT","mercado":"spot","precio":1.2461,"puntaje":-4.42,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-6.05,"niveles":{"resistencias":[{"valor":1.2475066666666665},{"valor":1.2546},{"valor":1.2701}],"soportes":[{"valor":1.2002}],"poc":1.3036833333333333},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-31T00:00:00+00:00","precio_anterior":1.2546,"precio_nuevo":1.2503,"valor_anterior":-0.065437107,"valor_nuevo":-0.04844475,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-31T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 04/05/2018, velas de Bitstamp XRPUSD, desde el 16/12/2016.","estado":null,"archivo":"velas/XRPUSDT_4h.json","n":21625},"1d":{"puntaje":-6.4,"niveles":{"resistencias":[{"valor":1.2468},{"valor":1.2546},{"valor":1.2935}],"soportes":[{"valor":1.1843},{"valor":1.1646},{"valor":1.1302}],"poc":1.3965774999999998},"divergencias":[],"empalme":"Antes del 04/05/2018, velas de Bitstamp XRPUSD, desde el 16/12/2016.","estado":{"estado":"Rango en formación","fuerza":false,"texto":"Rango en formación","velas":6,"duracion":"6 días","desde":"2026-10-25T00:00:00+00:00","puntaje_rango":0.8,"adx":18.1,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","Squeeze activado prolongado","volumen bajo o decreciente"],"senales_no":["valles del Squeeze más chicos"],"piso":1.2002,"techo":1.3444,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/XRPUSDT_1d.json","n":3606},"1w":{"puntaje":-2.55,"niveles":{"resistencias":[{"valor":1.2468},{"valor":1.2543},{"valor":1.2787}],"soportes":[{"valor":1.1172},{"valor":1.0432433333333333},{"valor":1.0092}],"poc":1.3997641666666665},"divergencias":[],"empalme":"Antes del 30/04/2018, velas de Bitstamp XRPUSD, desde el 12/12/2016.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":10,"duracion":"10 semanas","desde":"2026-08-17T00:00:00+00:00","puntaje_rango":0.4,"adx":24.5,"senales":["ADX con pendiente negativa","Squeeze activado prolongado"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":0,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/XRPUSDT_1w.json","n":515}}},{"simbolo":"ADAUSDT","mercado":"spot","precio":0.1929,"puntaje":-3.39,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-5.6,"niveles":{"resistencias":[{"valor":0.1956},{"valor":0.2005},{"valor":0.2054990565695927}],"soportes":[{"valor":0.182}],"poc":0.25311666666666666},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T16:00:00+00:00","precio_anterior":0.2005,"precio_nuevo":0.19,"valor_anterior":-0.01163675,"valor_nuevo":-0.0069408571,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T16:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 17/04/2018, velas de Upbit ADA/BTC pasado a dólares con BTC/USD de Bitstamp, desde el 01/10/2017.","estado":null,"archivo":"velas/ADAUSDT_4h.json","n":19889},"1d":{"puntaje":-5.8,"niveles":{"resistencias":[{"valor":0.2},{"valor":0.2111},{"valor":0.2206832923209259}],"soportes":[{"valor":0.1903},{"valor":0.1808},{"valor":0.1712}],"poc":0.16728583333333333},"divergencias":[],"empalme":"Antes del 17/04/2018, velas de Upbit ADA/BTC pasado a dólares con BTC/USD de Bitstamp, desde el 01/10/2017.","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":6,"duracion":"6 días","desde":"2026-10-25T00:00:00+00:00","puntaje_rango":0.4,"adx":27.6,"senales":["EMA 55 horizontal","volumen bajo o decreciente"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos","Squeeze activado prolongado"],"piso":null,"techo":null,"disparo_hace":8,"duracion_min":7,"unidad":"días"},"archivo":"velas/ADAUSDT_1d.json","n":3317},"1w":{"puntaje":-1.05,"niveles":{"resistencias":[{"valor":0.2},{"valor":0.2205},{"valor":0.2328}],"soportes":[{"valor":0.1533},{"valor":0.14745999999999998},{"valor":0.1382}],"poc":0.25395},"divergencias":[],"empalme":"Antes del 16/04/2018, velas de Upbit ADA/BTC pasado a dólares con BTC/USD de Bitstamp, desde el 25/09/2017.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":10,"duracion":"10 semanas","desde":"2026-08-17T00:00:00+00:00","puntaje_rango":0.4,"adx":22.2,"senales":["ADX con pendiente negativa","Squeeze activado prolongado"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/ADAUSDT_1w.json","n":474}}},{"simbolo":"AVAXUSDT","mercado":"spot","precio":8.517,"puntaje":-2.96,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-5.25,"niveles":{"resistencias":[{"valor":8.559},{"valor":8.662},{"valor":8.744}],"soportes":[{"valor":8.0}],"poc":11.015083333333333},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"confirmada","desde":"2026-10-22T20:00:00+00:00","hasta":"2026-10-30T12:00:00+00:00","precio_anterior":9.074,"precio_nuevo":8.149,"valor_anterior":-0.051998712,"valor_nuevo":-0.043346058,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-22T20:00:00+00:00","hasta_valor":"2026-10-30T12:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T16:00:00+00:00","precio_anterior":8.675,"precio_nuevo":8.327,"valor_anterior":-0.55505107,"valor_nuevo":-0.28770786,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T16:00:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/AVAXUSDT_4h.json","n":13380},"1d":{"puntaje":-5.2,"niveles":{"resistencias":[{"valor":9.124078795440905},{"valor":9.264},{"valor":9.764}],"soportes":[{"valor":8.317},{"valor":8.2},{"valor":7.169}],"poc":6.4876000000000005},"divergencias":[],"empalme":"","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":2,"duracion":"2 días","desde":"2026-10-29T00:00:00+00:00","puntaje_rango":0.4,"adx":24.3,"senales":["EMA 55 horizontal","volumen bajo o decreciente"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos","Squeeze activado prolongado"],"piso":null,"techo":null,"disparo_hace":2,"duracion_min":7,"unidad":"días"},"archivo":"velas/AVAXUSDT_1d.json","n":2230},"1w":{"puntaje":-0.7,"niveles":{"resistencias":[{"valor":8.52},{"valor":9.150275},{"valor":10.49}],"soportes":[{"valor":8.37},{"valor":8.317},{"valor":7.55}],"poc":9.150275},"divergencias":[],"empalme":"","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":10,"duracion":"10 semanas","desde":"2026-08-17T00:00:00+00:00","puntaje_rango":0.2,"adx":30.7,"senales":["ADX con pendiente negativa"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/AVAXUSDT_1w.json","n":318}}},{"simbolo":"LINKUSDT","mercado":"spot","precio":11.442,"puntaje":-0.9,"sesgo":"neutral","accion":false,"tfs":{"4h":{"puntaje":-2.01,"niveles":{"resistencias":[{"valor":11.531},{"valor":11.60749826493183},{"valor":11.737}],"soportes":[{"valor":11.289},{"valor":11.228},{"valor":11.002833333333333}],"poc":11.988108333333333},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T04:00:00+00:00","precio_anterior":11.2,"precio_nuevo":10.912,"valor_anterior":-0.071109454,"valor_nuevo":-0.066946534,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T04:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T16:00:00+00:00","hasta":"2026-10-30T16:00:00+00:00","precio_anterior":11.32,"precio_nuevo":11.023,"valor_anterior":-0.62806214,"valor_nuevo":-0.27598536,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T16:00:00+00:00","hasta_valor":"2026-10-30T16:00:00+00:00","segundo_chico":null},{"indicador":"macd","nombre_indicador":"MACD","tipo":"bajista","estado":"confirmada","desde":"2026-10-28T08:00:00+00:00","hasta":"2026-10-29T12:00:00+00:00","precio_anterior":11.891,"precio_nuevo":11.975,"valor_anterior":0.069991963,"valor_nuevo":0.036753485,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-28T08:00:00+00:00","hasta_valor":"2026-10-29T12:00:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/LINKUSDT_4h.json","n":17064},"1d":{"puntaje":-3.8,"niveles":{"resistencias":[{"valor":11.443124999999998},{"valor":11.531},{"valor":12.059}],"soportes":[{"valor":11.2},{"valor":11.012570037077293},{"valor":10.908}],"poc":11.443124999999998},"divergencias":[],"empalme":"","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":2,"duracion":"2 días","desde":"2026-10-29T00:00:00+00:00","puntaje_rango":0.4,"adx":27.5,"senales":["EMA 55 horizontal","Squeeze activado prolongado"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/LINKUSDT_1d.json","n":2845},"1w":{"puntaje":1.4,"niveles":{"resistencias":[{"valor":11.61},{"valor":12.7},{"valor":12.826933333333333}],"soportes":[{"valor":10.94},{"valor":10.87},{"valor":10.617}],"poc":9.1072},"divergencias":[],"empalme":"","estado":{"estado":"Alcista","fuerza":false,"texto":"Alcista sin fuerza","velas":2,"duracion":"2 semanas","desde":"2026-10-12T00:00:00+00:00","puntaje_rango":0.2,"adx":31.3,"senales":["ADX con pendiente negativa"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/LINKUSDT_1w.json","n":406}}},{"simbolo":"TRXUSDT","mercado":"spot","precio":0.3238,"puntaje":0.18,"sesgo":"neutral","accion":false,"tfs":{"4h":{"puntaje":-3.65,"niveles":{"resistencias":[{"valor":0.327},{"valor":0.3287},{"valor":0.3305}],"soportes":[],"poc":0.3307575},"divergencias":[],"empalme":"Antes del 11/06/2018, velas de Bitfinex TRXUSD, desde el 24/01/2018.","estado":null,"archivo":"velas/TRXUSDT_4h.json","n":19201},"1d":{"puntaje":-1.4,"niveles":{"resistencias":[{"valor":0.3246},{"valor":0.327},{"valor":0.3287384741464841}],"soportes":[{"valor":0.3235},{"valor":0.3217},{"valor":0.3144}],"poc":0.3320616666666667},"divergencias":[],"empalme":"Antes del 11/06/2018, velas de Bitfinex TRXUSD, desde el 24/01/2018.","estado":{"estado":"Rango en formación","fuerza":false,"texto":"Rango en formación","velas":1,"duracion":"1 día","desde":"2026-10-30T00:00:00+00:00","puntaje_rango":0.8,"adx":16.5,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado"],"senales_no":["volumen bajo o decreciente"],"piso":0.3267,"techo":0.3636,"disparo_hace":1,"duracion_min":7,"unidad":"días"},"archivo":"velas/TRXUSDT_1d.json","n":3202},"1w":{"puntaje":2.5,"niveles":{"resistencias":[{"valor":0.32654},{"valor":0.3493},{"valor":0.37}],"soportes":[{"valor":0.3217},{"valor":0.3163134553745357},{"valor":0.3108}],"poc":0.28376999999999997},"divergencias":[],"empalme":"Antes del 11/06/2018, velas de Bitfinex TRXUSD, desde el 22/01/2018.","estado":{"estado":"Rango en formación","fuerza":false,"texto":"Rango en formación","velas":2,"duracion":"2 semanas","desde":"2026-10-12T00:00:00+00:00","puntaje_rango":0.6,"adx":14.2,"senales":["ADX con pendiente negativa","MACD con histogramas chicos","Squeeze activado prolongado"],"senales_no":["MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":0.327,"techo":0.3372,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/TRXUSDT_1w.json","n":457}}},{"simbolo":"XLMUSDT","mercado":"spot","precio":0.1691,"puntaje":-4.36,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-2.95,"niveles":{"resistencias":[{"valor":0.1712},{"valor":0.1724},{"valor":0.174}],"soportes":[{"valor":0.1669},{"valor":0.16489},{"valor":0.1577}],"poc":0.1774725},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":0.1663,"precio_nuevo":0.1577,"valor_anterior":-0.00094767953,"valor_nuevo":-0.00048682415,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T08:00:00+00:00","precio_anterior":0.1663,"precio_nuevo":0.164,"valor_anterior":-0.0092331786,"valor_nuevo":-0.0019995714,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T08:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 31/05/2018, velas de OKX XLM-USDT, desde el 11/01/2018.","estado":null,"archivo":"velas/XLMUSDT_4h.json","n":19280},"1d":{"puntaje":-6.8,"niveles":{"resistencias":[{"valor":0.1713},{"valor":0.17216333333333333},{"valor":0.1776}],"soportes":[{"valor":0.1677},{"valor":0.1663},{"valor":0.159}],"poc":0.18557416666666665},"divergencias":[],"empalme":"Antes del 31/05/2018, velas de OKX XLM-USDT, desde el 11/01/2018.","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":2,"duracion":"2 días","desde":"2026-10-29T00:00:00+00:00","puntaje_rango":0.0,"adx":26.3,"senales":[],"senales_no":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/XLMUSDT_1d.json","n":3215},"1w":{"puntaje":-3.2,"niveles":{"resistencias":[{"valor":0.1824},{"valor":0.1847},{"valor":0.1978}],"soportes":[{"valor":0.1688},{"valor":0.16},{"valor":0.15638}],"poc":0.18496833333333332},"divergencias":[],"empalme":"Antes del 28/05/2018, velas de OKX XLM-USDT, desde el 08/01/2018.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":7,"duracion":"7 semanas","desde":"2026-09-07T00:00:00+00:00","puntaje_rango":0.4,"adx":37.9,"senales":["ADX con pendiente negativa","Squeeze activado prolongado"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/XLMUSDT_1w.json","n":459}}},{"simbolo":"HBARUSDT","mercado":"spot","precio":0.07154,"puntaje":-2.83,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-4.4,"niveles":{"resistencias":[{"valor":0.07287},{"valor":0.0735615},{"valor":0.07492}],"soportes":[{"valor":0.06601}],"poc":0.08420225},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T04:00:00+00:00","precio_anterior":0.07492,"precio_nuevo":0.07016,"valor_anterior":-0.0047823893,"valor_nuevo":-0.0027287214,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T04:00:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/HBARUSDT_4h.json","n":15533},"1d":{"puntaje":-5.08,"niveles":{"resistencias":[{"valor":0.07156},{"valor":0.07196},{"valor":0.07277}],"soportes":[{"valor":0.07006},{"valor":0.06716},{"valor":0.06559}],"poc":0.07484608333333334},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"confirmada","desde":"2026-10-14T00:00:00+00:00","hasta":"2026-10-29T00:00:00+00:00","precio_anterior":0.08331,"precio_nuevo":0.06601,"valor_anterior":-0.0025042302,"valor_nuevo":-0.0012567524,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-14T00:00:00+00:00","hasta_valor":"2026-10-29T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":1,"duracion":"1 día","desde":"2026-10-30T00:00:00+00:00","puntaje_rango":0.0,"adx":24.1,"senales":[],"senales_no":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/HBARUSDT_1d.json","n":2589},"1w":{"puntaje":-0.8,"niveles":{"resistencias":[{"valor":0.07196},{"valor":0.0725},{"valor":0.0836}],"soportes":[{"valor":0.066881},{"valor":0.06534},{"valor":0.06429}],"poc":0.09408649999999999},"divergencias":[],"empalme":"","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":12,"duracion":"12 semanas","desde":"2026-08-03T00:00:00+00:00","puntaje_rango":0.2,"adx":24.4,"senales":["Squeeze activado prolongado"],"senales_no":["ADX con pendiente negativa","MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/HBARUSDT_1w.json","n":370}}},{"simbolo":"ALGOUSDT","mercado":"spot","precio":0.095,"puntaje":-3.52,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-6.1,"niveles":{"resistencias":[{"valor":0.0984},{"valor":0.1008},{"valor":0.1015}],"soportes":[{"valor":0.0894}],"poc":0.11960583333333333},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T16:00:00+00:00","precio_anterior":0.1008,"precio_nuevo":0.0935,"valor_anterior":-0.00674725,"valor_nuevo":-0.00515925,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T16:00:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/ALGOUSDT_4h.json","n":16127},"1d":{"puntaje":-6.0,"niveles":{"resistencias":[{"valor":0.1008},{"valor":0.103},{"valor":0.105}],"soportes":[{"valor":0.0932},{"valor":0.0926},{"valor":0.09095500000000001}],"poc":0.09095500000000001},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-06-16T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":0.0927,"precio_nuevo":0.0894,"valor_anterior":-0.024026714,"valor_nuevo":-0.017136,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-06-16T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":1,"duracion":"1 día","desde":"2026-10-30T00:00:00+00:00","puntaje_rango":0.8,"adx":22.0,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","Squeeze activado prolongado","volumen bajo o decreciente"],"senales_no":["valles del Squeeze más chicos"],"piso":null,"techo":null,"disparo_hace":0,"duracion_min":7,"unidad":"días"},"archivo":"velas/ALGOUSDT_1d.json","n":2688},"1w":{"puntaje":-1.0,"niveles":{"resistencias":[{"valor":0.1},{"valor":0.105},{"valor":0.1057}],"soportes":[{"valor":0.0938},{"valor":0.08909},{"valor":0.0809}],"poc":0.08909},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2025-12-22T00:00:00+00:00","hasta":"2026-08-24T00:00:00+00:00","precio_anterior":0.1086,"precio_nuevo":0.0836,"valor_anterior":-0.093059857,"valor_nuevo":-0.024716107,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2025-12-22T00:00:00+00:00","hasta_valor":"2026-08-24T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":7,"duracion":"7 semanas","desde":"2026-09-07T00:00:00+00:00","puntaje_rango":0.2,"adx":21.8,"senales":["Squeeze activado prolongado"],"senales_no":["ADX con pendiente negativa","MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/ALGOUSDT_1w.json","n":384}}},{"simbolo":"AAVEUSDT","mercado":"spot","precio":130.41,"puntaje":-1.12,"sesgo":"neutral","accion":false,"tfs":{"4h":{"puntaje":-3.35,"niveles":{"resistencias":[{"valor":133.61},{"valor":134.92},{"valor":136.3940937533549}],"soportes":[{"valor":129.51},{"valor":128.54},{"valor":115.23}],"poc":180.957},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T16:00:00+00:00","hasta":"2026-10-30T04:00:00+00:00","precio_anterior":134.12,"precio_nuevo":122.83,"valor_anterior":-1.2274653,"valor_nuevo":-0.68232834,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T16:00:00+00:00","hasta_valor":"2026-10-30T04:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T16:00:00+00:00","hasta":"2026-10-30T16:00:00+00:00","precio_anterior":134.12,"precio_nuevo":124.57,"valor_anterior":-10.911646,"valor_nuevo":-3.7113107,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T16:00:00+00:00","hasta_valor":"2026-10-30T16:00:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/AAVEUSDT_4h.json","n":13243},"1d":{"puntaje":-3.8,"niveles":{"resistencias":[{"valor":133.67},{"valor":134.93},{"valor":140.19}],"soportes":[{"valor":126.64756691992443},{"valor":120.29},{"valor":113.19}],"poc":91.09741666666667},"divergencias":[],"empalme":"","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":2,"duracion":"2 días","desde":"2026-10-29T00:00:00+00:00","puntaje_rango":0.2,"adx":25.8,"senales":["EMA 55 horizontal"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/AAVEUSDT_1d.json","n":2207},"1w":{"puntaje":1.4,"niveles":{"resistencias":[{"valor":133.94},{"valor":138.75196531530975},{"valor":143.63}],"soportes":[{"valor":125.73},{"valor":118.87},{"valor":114.72}],"poc":91.28475},"divergencias":[],"empalme":"","estado":{"estado":"Alcista","fuerza":false,"texto":"Alcista sin fuerza","velas":1,"duracion":"1 semana","desde":"2026-10-19T00:00:00+00:00","puntaje_rango":0.0,"adx":32.7,"senales":[],"senales_no":["ADX con pendiente negativa","MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/AAVEUSDT_1w.json","n":315}}},{"simbolo":"INJUSDT","mercado":"spot","precio":7.098,"puntaje":0.36,"sesgo":"neutral","accion":false,"tfs":{"4h":{"puntaje":-5.13,"niveles":{"resistencias":[{"valor":7.117},{"valor":7.432},{"valor":7.512}],"soportes":[{"valor":6.925}],"poc":7.6419999999999995},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"confirmada","desde":"2026-10-22T20:00:00+00:00","hasta":"2026-10-30T16:00:00+00:00","precio_anterior":7.851,"precio_nuevo":6.863,"valor_anterior":-0.097351128,"valor_nuevo":-0.085512978,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-22T20:00:00+00:00","hasta_valor":"2026-10-30T16:00:00+00:00","segundo_chico":null},{"indicador":"macd","nombre_indicador":"MACD","tipo":"bajista","estado":"confirmada","desde":"2026-10-26T20:00:00+00:00","hasta":"2026-10-28T20:00:00+00:00","precio_anterior":8.089,"precio_nuevo":8.205,"valor_anterior":0.063592206,"valor_nuevo":0.026074993,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-26T20:00:00+00:00","hasta_valor":"2026-10-28T20:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-10-24T00:00:00+00:00","hasta":"2026-10-31T00:00:00+00:00","precio_anterior":7.66,"precio_nuevo":7.13,"valor_anterior":-0.83645536,"valor_nuevo":-0.5591825,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T00:00:00+00:00","hasta_valor":"2026-10-31T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/INJUSDT_4h.json","n":13206},"1d":{"puntaje":-2.2,"niveles":{"resistencias":[{"valor":7.131},{"valor":7.169},{"valor":7.3265828209283335}],"soportes":[{"valor":6.714},{"valor":6.44},{"valor":6.072221789082828}],"poc":4.9125},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"bajista","estado":"confirmada","desde":"2026-09-25T00:00:00+00:00","hasta":"2026-10-21T00:00:00+00:00","precio_anterior":8.411,"precio_nuevo":9.417,"valor_anterior":1.4448718,"valor_nuevo":0.74323964,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-09-25T00:00:00+00:00","hasta_valor":"2026-10-21T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":{"estado":"Rango","fuerza":false,"texto":"Rango","velas":8,"duracion":"8 días","desde":"2026-10-23T00:00:00+00:00","puntaje_rango":1.0,"adx":13.9,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado","volumen bajo o decreciente"],"senales_no":[],"piso":6.863,"techo":8.327,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/INJUSDT_1d.json","n":2201},"1w":{"puntaje":3.9,"niveles":{"resistencias":[{"valor":7.345},{"valor":8.95},{"valor":9.720969138820847}],"soportes":[{"valor":6.781129329606018},{"valor":6.34},{"valor":6.146283333333333}],"poc":5.074841666666666},"divergencias":[],"empalme":"","estado":{"estado":"Alcista","fuerza":true,"texto":"Alcista con fuerza","velas":2,"duracion":"2 semanas","desde":"2026-10-12T00:00:00+00:00","puntaje_rango":0.2,"adx":34.0,"senales":["Squeeze activado prolongado"],"senales_no":["ADX con pendiente negativa","MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":1,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/INJUSDT_1w.json","n":314}}},{"simbolo":"ARBUSDT","mercado":"spot","precio":0.1618,"puntaje":-1.02,"sesgo":"neutral","accion":false,"tfs":{"4h":{"puntaje":-6.12,"niveles":{"resistencias":[{"valor":0.1624},{"valor":0.1634},{"valor":0.1648}],"soportes":[{"valor":0.148}],"poc":0.19164416666666667},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":0.1635,"precio_nuevo":0.148,"valor_anterior":-0.0016600625,"valor_nuevo":-0.00081440475,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-10-24T16:00:00+00:00","hasta":"2026-10-31T00:00:00+00:00","precio_anterior":0.1638,"precio_nuevo":0.1614,"valor_anterior":-0.015554393,"valor_nuevo":-0.0036208929,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T16:00:00+00:00","hasta_valor":"2026-10-31T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/ARBUSDT_4h.json","n":7906},"1d":{"puntaje":-1.34,"niveles":{"resistencias":[{"valor":0.1621},{"valor":0.1632},{"valor":0.1697}],"soportes":[{"valor":0.1471031538247655},{"valor":0.1314},{"valor":0.1096}],"poc":0.0920575},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-10-12T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":0.1795,"precio_nuevo":0.148,"valor_anterior":-0.03008125,"valor_nuevo":-0.014556571,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-12T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":{"estado":"Rango","fuerza":false,"texto":"Rango","velas":23,"duracion":"23 días","desde":"2026-10-08T00:00:00+00:00","puntaje_rango":0.8,"adx":17.4,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado"],"senales_no":["volumen bajo o decreciente"],"piso":0.148,"techo":0.2041,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/ARBUSDT_1d.json","n":1318},"1w":{"puntaje":0.9,"niveles":{"resistencias":[{"valor":0.1718},{"valor":0.1859},{"valor":0.19230999999999998}],"soportes":[{"valor":0.1495},{"valor":0.1049},{"valor":0.1013}],"poc":0.09626749999999999},"divergencias":[],"empalme":"","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":14,"duracion":"14 semanas","desde":"2026-07-20T00:00:00+00:00","puntaje_rango":0.2,"adx":32.2,"senales":["ADX con pendiente negativa"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/ARBUSDT_1w.json","n":188}}},{"simbolo":"IOTAUSDT","mercado":"spot","precio":0.0397,"puntaje":-3.11,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-4.68,"niveles":{"resistencias":[{"valor":0.0414},{"valor":0.0419},{"valor":0.04224364018990305}],"soportes":[{"valor":0.0361}],"poc":0.058705},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T08:00:00+00:00","precio_anterior":0.0421,"precio_nuevo":0.0386,"valor_anterior":-0.0027731429,"valor_nuevo":-0.0017700714,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T08:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 31/05/2018, velas de Bitfinex IOTUSD, desde el 12/06/2017.","estado":null,"archivo":"velas/IOTAUSDT_4h.json","n":20554},"1d":{"puntaje":-5.8,"niveles":{"resistencias":[{"valor":0.0408},{"valor":0.0415625},{"valor":0.0426}],"soportes":[{"valor":0.0389},{"valor":0.0383},{"valor":0.0381}],"poc":0.0415625},"divergencias":[],"empalme":"Antes del 31/05/2018, velas de Bitfinex IOTUSD, desde el 12/06/2017.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":3,"duracion":"3 días","desde":"2026-10-28T00:00:00+00:00","puntaje_rango":0.6,"adx":22.5,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","volumen bajo o decreciente"],"senales_no":["valles del Squeeze más chicos","Squeeze activado prolongado"],"piso":null,"techo":null,"disparo_hace":2,"duracion_min":7,"unidad":"días"},"archivo":"velas/IOTAUSDT_1d.json","n":3428},"1w":{"puntaje":-0.8,"niveles":{"resistencias":[{"valor":0.0494},{"valor":0.0515},{"valor":0.05691666666666667}],"soportes":[{"valor":0.0372},{"valor":0.033073333333333337},{"valor":0.031}],"poc":0.05691666666666667},"divergencias":[],"empalme":"Antes del 28/05/2018, velas de Bitfinex IOTUSD, desde el 12/06/2017.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":15,"duracion":"15 semanas","desde":"2026-07-13T00:00:00+00:00","puntaje_rango":0.2,"adx":18.4,"senales":["Squeeze activado prolongado"],"senales_no":["ADX con pendiente negativa","MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/IOTAUSDT_1w.json","n":489}}},{"simbolo":"CAKEUSDT","mercado":"spot","precio":1.924,"puntaje":-1.0,"sesgo":"neutral","accion":false,"tfs":{"4h":{"puntaje":-6.3,"niveles":{"resistencias":[{"valor":2.004},{"valor":2.039},{"valor":2.0618304053910883}],"soportes":[{"valor":1.837}],"poc":2.1974},"divergencias":[],"empalme":"","estado":null,"archivo":"velas/CAKEUSDT_4h.json","n":12480},"1d":{"puntaje":-3.46,"niveles":{"resistencias":[{"valor":2.004},{"valor":2.07},{"valor":2.081}],"soportes":[{"valor":1.919},{"valor":1.8871703783064644},{"valor":1.857}],"poc":1.4092083333333334},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-10-09T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":2.137,"precio_nuevo":1.837,"valor_anterior":-0.075893379,"valor_nuevo":-0.021560304,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-09T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-10-14T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":2.22,"precio_nuevo":1.837,"valor_anterior":-0.35076607,"valor_nuevo":-0.15465857,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-14T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":{"estado":"Rango","fuerza":false,"texto":"Rango","velas":13,"duracion":"13 días","desde":"2026-10-18T00:00:00+00:00","puntaje_rango":0.6,"adx":19.4,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","Squeeze activado prolongado"],"senales_no":["valles del Squeeze más chicos","volumen bajo o decreciente"],"piso":1.837,"techo":2.271,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/CAKEUSDT_1d.json","n":2080},"1w":{"puntaje":2.4,"niveles":{"resistencias":[{"valor":1.938},{"valor":1.969},{"valor":2.06}],"soportes":[{"valor":1.9065430359460827},{"valor":1.766},{"valor":1.668}],"poc":1.40345},"divergencias":[],"empalme":"","estado":{"estado":"Alcista","fuerza":false,"texto":"Alcista sin fuerza","velas":1,"duracion":"1 semana","desde":"2026-10-19T00:00:00+00:00","puntaje_rango":0.0,"adx":28.0,"senales":[],"senales_no":["ADX con pendiente negativa","MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/CAKEUSDT_1w.json","n":297}}},{"simbolo":"ONDOUSDT","mercado":"spot","precio":0.4111,"puntaje":-0.68,"sesgo":"neutral","accion":false,"tfs":{"4h":{"puntaje":-1.85,"niveles":{"resistencias":[{"valor":0.4114},{"valor":0.4135},{"valor":0.4168042328784329}],"soportes":[{"valor":0.4032},{"valor":0.3992},{"valor":0.3972}],"poc":0.49679166666666663},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-30T04:00:00+00:00","precio_anterior":0.3966,"precio_nuevo":0.3847,"valor_anterior":-0.0036051454,"valor_nuevo":-0.0030726511,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-30T04:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-10-24T16:00:00+00:00","hasta":"2026-10-30T12:00:00+00:00","precio_anterior":0.3981,"precio_nuevo":0.3867,"valor_anterior":-0.036508821,"valor_nuevo":-0.013101357,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T16:00:00+00:00","hasta_valor":"2026-10-30T12:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 11/04/2025, velas de Bybit ONDOUSDT, desde el 18/01/2024.","estado":null,"archivo":"velas/ONDOUSDT_4h.json","n":6100},"1d":{"puntaje":-3.2,"niveles":{"resistencias":[{"valor":0.4114},{"valor":0.4227},{"valor":0.4279}],"soportes":[{"valor":0.4018090989398097},{"valor":0.3974},{"valor":0.3947}],"poc":0.37867},"divergencias":[],"empalme":"Antes del 11/04/2025, velas de Bybit ONDOUSDT, desde el 18/01/2024.","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":1,"duracion":"1 día","desde":"2026-10-30T00:00:00+00:00","puntaje_rango":0.8,"adx":23.3,"senales":["EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado","volumen bajo o decreciente"],"senales_no":["ADX cayendo desde arriba o bajo 23"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/ONDOUSDT_1d.json","n":1017},"1w":{"puntaje":1.4,"niveles":{"resistencias":[{"valor":0.4282},{"valor":0.4584012652771627},{"valor":0.4709}],"soportes":[{"valor":0.34138666666666667},{"valor":0.323},{"valor":0.3076933333333334}],"poc":0.34138666666666667},"divergencias":[],"empalme":"Antes del 07/04/2025, velas de Bybit ONDOUSDT, desde el 15/01/2024.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":6,"duracion":"6 semanas","desde":"2026-09-14T00:00:00+00:00","puntaje_rango":0.2,"adx":28.1,"senales":["Squeeze activado prolongado"],"senales_no":["ADX con pendiente negativa","MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/ONDOUSDT_1w.json","n":145}}},{"simbolo":"TAOUSDT","mercado":"spot","precio":235.5,"puntaje":-2.6,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-7.05,"niveles":{"resistencias":[{"valor":242.6},{"valor":245.0},{"valor":247.3}],"soportes":[{"valor":220.2}],"poc":272.36249999999995},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-10-24T12:00:00+00:00","hasta":"2026-10-31T00:00:00+00:00","precio_anterior":242.6,"precio_nuevo":236.0,"valor_anterior":-15.453893,"valor_nuevo":-12.475821,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-24T12:00:00+00:00","hasta_valor":"2026-10-31T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 11/04/2024, velas de MEXC TAOUSDT, desde el 03/03/2023.","estado":null,"archivo":"velas/TAOUSDT_4h.json","n":8026},"1d":{"puntaje":-6.84,"niveles":{"resistencias":[{"valor":242.6},{"valor":250.3},{"valor":254.3}],"soportes":[{"valor":228.3},{"valor":214.9},{"valor":213.4}],"poc":195.335},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-10-09T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":268.3,"precio_nuevo":220.2,"valor_anterior":-6.0078244,"valor_nuevo":-2.9706971,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-09T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 11/04/2024, velas de MEXC TAOUSDT, desde el 03/03/2023.","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":2,"duracion":"2 días","desde":"2026-10-29T00:00:00+00:00","puntaje_rango":0.8,"adx":26.7,"senales":["EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado","volumen bajo o decreciente"],"senales_no":["ADX cayendo desde arriba o bajo 23"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/TAOUSDT_1d.json","n":1338},"1w":{"puntaje":1.7,"niveles":{"resistencias":[{"valor":236.1},{"valor":258.475},{"valor":267.5948831624462}],"soportes":[{"valor":234.3},{"valor":213.4},{"valor":206.3}],"poc":258.475},"divergencias":[],"empalme":"Antes del 08/04/2024, velas de MEXC TAOUSDT, desde el 27/02/2023.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":7,"duracion":"7 semanas","desde":"2026-09-07T00:00:00+00:00","puntaje_rango":0.2,"adx":15.2,"senales":["Squeeze activado prolongado"],"senales_no":["ADX con pendiente negativa","MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/TAOUSDT_1w.json","n":191}}},{"simbolo":"HYPEUSDT","mercado":"okx","precio":88.57,"puntaje":3.34,"sesgo":"alcista moderado","accion":false,"tfs":{"4h":{"puntaje":4.4,"niveles":{"resistencias":[{"valor":90.2892},{"valor":93.987},{"valor":97.089}],"soportes":[{"valor":88.073},{"valor":86.732},{"valor":83.03961105707835}],"poc":81.41168333333334},"divergencias":[],"empalme":"Antes del 21/02/2025, velas de Bybit (perpetuo) HYPEUSDT, desde el 05/12/2024.","estado":null,"archivo":"velas/HYPEUSDT_4h.json","n":4168},"1d":{"puntaje":4.8,"niveles":{"resistencias":[{"valor":89.757},{"valor":95.257},{"valor":97.983}],"soportes":[{"valor":88.073},{"valor":86.798},{"valor":84.541}],"poc":80.405625},"divergencias":[],"empalme":"Antes del 21/02/2025, velas de Bybit (perpetuo) HYPEUSDT, desde el 05/12/2024.","estado":{"estado":"Alcista","fuerza":true,"texto":"Alcista con fuerza","velas":1,"duracion":"1 día","desde":"2026-10-30T00:00:00+00:00","puntaje_rango":0.4,"adx":26.0,"senales":["EMA 55 horizontal","Squeeze activado prolongado"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/HYPEUSDT_1d.json","n":695},"1w":{"puntaje":2.02,"niveles":{"resistencias":[{"valor":97.983}],"soportes":[{"valor":76.94},{"valor":75.104},{"valor":61.806533333333334}],"poc":30.152124999999998},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"bajista","estado":"confirmada","desde":"2026-05-25T00:00:00+00:00","hasta":"2026-09-21T00:00:00+00:00","precio_anterior":73.28,"precio_nuevo":97.983,"valor_anterior":3.6109442,"valor_nuevo":2.3409401,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-05-25T00:00:00+00:00","hasta_valor":"2026-09-21T00:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"bajista","estado":"confirmada","desde":"2026-06-29T00:00:00+00:00","hasta":"2026-10-05T00:00:00+00:00","precio_anterior":72.06,"precio_nuevo":95.257,"valor_anterior":22.802637,"valor_nuevo":16.192671,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-06-29T00:00:00+00:00","hasta_valor":"2026-10-05T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 17/02/2025, velas de Bybit (perpetuo) HYPEUSDT, desde el 02/12/2024.","estado":{"estado":"Alcista","fuerza":false,"texto":"Alcista sin fuerza","velas":2,"duracion":"2 semanas","desde":"2026-10-12T00:00:00+00:00","puntaje_rango":0.4,"adx":34.0,"senales":["ADX con pendiente negativa","volumen bajo o decreciente"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/HYPEUSDT_1w.json","n":99}}},{"simbolo":"COINUSDT","mercado":"okx","precio":145.75,"puntaje":-4.13,"sesgo":"bajista moderado","accion":true,"tfs":{"4h":{"puntaje":-5.69,"niveles":{"resistencias":[{"valor":150.074},{"valor":155.71},{"valor":156.55}],"soportes":[{"valor":137.46}],"poc":160.06008333333335},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-10-24T16:00:00+00:00","hasta":"2026-10-31T00:00:00+00:00","precio_anterior":161.69,"precio_nuevo":145.34,"valor_anterior":-8.7997286,"valor_nuevo":-7.7810786,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-24T16:00:00+00:00","hasta_valor":"2026-10-31T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 26/02/2026, velas de Yahoo COIN, desde el 30/11/2023.","estado":null,"archivo":"velas/COINUSDT_4h.json","n":2823},"1d":{"puntaje":-6.84,"niveles":{"resistencias":[{"valor":145.93},{"valor":152.79},{"valor":153.99}],"soportes":[{"valor":145.74333333333334},{"valor":139.59}],"poc":161.71833333333333},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-10-08T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":172.0,"precio_nuevo":137.46,"valor_anterior":-2.3596759,"valor_nuevo":-1.9909561,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-08T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 26/02/2026, velas de Yahoo COIN, desde el 14/04/2021.","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":1,"duracion":"1 día","desde":"2026-10-30T00:00:00+00:00","puntaje_rango":0.2,"adx":24.4,"senales":["Squeeze activado prolongado"],"senales_no":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":1,"duracion_min":7,"unidad":"días"},"archivo":"velas/COINUSDT_1d.json","n":1470},"1w":{"puntaje":-1.8,"niveles":{"resistencias":[{"valor":146.1199951171875},{"valor":157.63},{"valor":161.53}],"soportes":[{"valor":142.5800018310547},{"valor":139.59}],"poc":258.2245833333333},"divergencias":[],"empalme":"Antes del 23/02/2026, velas de Yahoo COIN, desde el 12/04/2021.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":1,"duracion":"1 semana","desde":"2026-10-19T00:00:00+00:00","puntaje_rango":0.4,"adx":12.3,"senales":["ADX con pendiente negativa","Squeeze activado prolongado"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/COINUSDT_1w.json","n":289}}},{"simbolo":"CRCLUSDT","mercado":"okx","precio":73.1,"puntaje":-2.88,"sesgo":"bajista moderado","accion":true,"tfs":{"4h":{"puntaje":-6.76,"niveles":{"resistencias":[{"valor":75.03},{"valor":78.64},{"valor":79.25}],"soportes":[],"poc":80.825},"divergencias":[],"empalme":"Antes del 26/02/2026, velas de Yahoo CRCL, desde el 05/06/2025.","estado":null,"archivo":"velas/CRCLUSDT_4h.json","n":1916},"1d":{"puntaje":-4.2,"niveles":{"resistencias":[{"valor":75.03},{"valor":76.37},{"valor":78.4}],"soportes":[{"valor":72.67},{"valor":69.89},{"valor":69.52}],"poc":85.47325000000001},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-09-16T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":78.4,"precio_nuevo":71.2,"valor_anterior":-2.3285698,"valor_nuevo":-0.98458806,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-09-16T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-09-19T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":91.46,"precio_nuevo":71.2,"valor_anterior":-8.3578786,"valor_nuevo":-2.4599143,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-09-19T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 26/02/2026, velas de Yahoo CRCL, desde el 05/06/2025.","estado":{"estado":"Rango","fuerza":false,"texto":"Rango","velas":22,"duracion":"22 días","desde":"2026-10-09T00:00:00+00:00","puntaje_rango":0.8,"adx":14.2,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado"],"senales_no":["volumen bajo o decreciente"],"piso":71.2,"techo":92.2,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/CRCLUSDT_1d.json","n":429},"1w":{"puntaje":-0.7,"niveles":{"resistencias":[{"valor":78.4},{"valor":81.6005018234253},{"valor":84.4}],"soportes":[{"valor":64.91999816894531},{"valor":61.2796682993571},{"valor":58.04}],"poc":81.6005018234253},"divergencias":[],"empalme":"Antes del 23/02/2026, velas de Yahoo CRCL, desde el 02/06/2025.","estado":{"estado":"Rango en formación","fuerza":false,"texto":"Rango en formación","velas":1,"duracion":"1 semana","desde":"2026-10-19T00:00:00+00:00","puntaje_rango":0.6,"adx":15.4,"senales":["ADX con pendiente negativa","MACD con histogramas chicos","Squeeze activado prolongado"],"senales_no":["MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":80.01,"techo":92.2,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/CRCLUSDT_1w.json","n":73}}},{"simbolo":"NKE","mercado":"yahoo","precio":38.67,"puntaje":-0.53,"sesgo":"neutral","accion":true,"tfs":{"4h":{"puntaje":3.25,"niveles":{"resistencias":[{"valor":38.86000061035156},{"valor":39.80500030517578},{"valor":41.34000015258789}],"soportes":[{"valor":38.499900817871094},{"valor":38.16999816894531},{"valor":37.95000076293945}],"poc":35.99837447802226},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"bajista","estado":"en formación","desde":"2026-10-16T13:30:00+00:00","hasta":"2026-10-30T17:30:00+00:00","precio_anterior":37.8650016784668,"precio_nuevo":38.959999084472656,"valor_anterior":0.35927909,"valor_nuevo":0.044354553,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-10-16T13:30:00+00:00","hasta_valor":"2026-10-30T17:30:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"bajista","estado":"en formación","desde":"2026-10-20T17:30:00+00:00","hasta":"2026-10-30T17:30:00+00:00","precio_anterior":38.04999923706055,"precio_nuevo":38.959999084472656,"valor_anterior":2.3739008,"valor_nuevo":0.35305737,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-10-20T17:30:00+00:00","hasta_valor":"2026-10-30T17:30:00+00:00","segundo_chico":null}],"empalme":"","estado":null,"archivo":"velas/NKE_4h.json","n":1489},"1d":{"puntaje":2.2,"niveles":{"resistencias":[{"valor":38.86000061035156},{"valor":39.880001068115234},{"valor":40.68999862670898}],"soportes":[{"valor":37.76040339914276},{"valor":37.040000915527344},{"valor":36.66999816894531}],"poc":36.02066655158997},"divergencias":[],"empalme":"","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":8,"duracion":"8 días","desde":"2026-10-21T00:00:00+00:00","puntaje_rango":0.4,"adx":26.4,"senales":["EMA 55 horizontal","volumen bajo o decreciente"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos","Squeeze activado prolongado"],"piso":null,"techo":null,"disparo_hace":7,"duracion_min":7,"unidad":"días"},"archivo":"velas/NKE_1d.json","n":11572},"1w":{"puntaje":-3.6,"niveles":{"resistencias":[{"valor":40.0},{"valor":41.34999847412109},{"valor":42.09000015258789}],"soportes":[{"valor":31.969999313354492}],"poc":42.54925017356872},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"confirmada","desde":"2026-05-18T00:00:00+00:00","hasta":"2026-10-05T00:00:00+00:00","precio_anterior":41.34999847412109,"precio_nuevo":32.7599983215332,"valor_anterior":-14.160035,"valor_nuevo":-4.0942334,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-05-18T00:00:00+00:00","hasta_valor":"2026-10-05T00:00:00+00:00","segundo_chico":null}],"empalme":"","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":2,"duracion":"2 semanas","desde":"2026-10-12T00:00:00+00:00","puntaje_rango":0.2,"adx":41.7,"senales":["MACD con histogramas chicos"],"senales_no":["ADX con pendiente negativa","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":4,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/NKE_1w.json","n":2395}}},{"simbolo":"PAXGUSDT","mercado":"spot","precio":3897.37,"puntaje":-4.37,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-5.5,"niveles":{"resistencias":[{"valor":3985.0},{"valor":4026.922817798223},{"valor":4076.62}],"soportes":[],"poc":4147.992583333334},"divergencias":[],"empalme":"","estado":null,"archivo":"velas/PAXGUSDT_4h.json","n":13528},"1d":{"puntaje":-7.2,"niveles":{"resistencias":[{"valor":3960.53},{"valor":3983.2166666666667},{"valor":4021.0}],"soportes":[],"poc":4149.674999999999},"divergencias":[{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-09-11T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":4302.0,"precio_nuevo":3890.0,"valor_anterior":-191.0342,"valor_nuevo":-104.93194,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-09-11T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 28/08/2020, velas de Yahoo GC=F, desde el 03/01/2011.","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":1,"duracion":"1 día","desde":"2026-10-30T00:00:00+00:00","puntaje_rango":0.6,"adx":34.1,"senales":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos","volumen bajo o decreciente"],"senales_no":["EMA 55 horizontal","Squeeze activado prolongado"],"piso":null,"techo":null,"disparo_hace":6,"duracion_min":7,"unidad":"días"},"archivo":"velas/PAXGUSDT_1d.json","n":4682},"1w":{"puntaje":-2.1,"niveles":{"resistencias":[{"valor":3944.57},{"valor":3987.543},{"valor":4141.06}],"soportes":[{"valor":3600.0},{"valor":3523.0},{"valor":3434.52}],"poc":4527.3915},"divergencias":[],"empalme":"Antes del 24/08/2020, velas de Yahoo GC=F, desde el 03/01/2011.","estado":{"estado":"Rango","fuerza":false,"texto":"Rango","velas":5,"duracion":"5 semanas","desde":"2026-09-21T00:00:00+00:00","puntaje_rango":0.6,"adx":16.1,"senales":["ADX con pendiente negativa","MACD con histogramas chicos","Squeeze activado prolongado"],"senales_no":["MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":3985.0,"techo":4375.0,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/PAXGUSDT_1w.json","n":825}}},{"simbolo":"XAGUSDT","mercado":"okx","precio":49.42,"puntaje":-4.51,"sesgo":"bajista moderado","accion":false,"tfs":{"4h":{"puntaje":-5.26,"niveles":{"resistencias":[{"valor":52.8},{"valor":53.13},{"valor":53.45690575671649}],"soportes":[],"poc":60.92091666666667},"divergencias":[],"empalme":"Antes del 28/01/2026, velas de Yahoo SI=F, desde el 06/06/2024.","estado":null,"archivo":"velas/XAGUSDT_4h.json","n":4206},"1d":{"puntaje":-7.2,"niveles":{"resistencias":[{"valor":53.13},{"valor":54.86},{"valor":55.51}],"soportes":[],"poc":57.662416666666665},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-09-30T00:00:00+00:00","hasta":"2026-10-30T00:00:00+00:00","precio_anterior":60.14,"precio_nuevo":48.94,"valor_anterior":-0.51829228,"valor_nuevo":-0.36320844,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-09-30T00:00:00+00:00","hasta_valor":"2026-10-30T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 28/01/2026, velas de Yahoo SI=F, desde el 03/01/2011.","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":9,"duracion":"9 días","desde":"2026-10-22T00:00:00+00:00","puntaje_rango":0.0,"adx":39.6,"senales":[],"senales_no":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/XAGUSDT_1d.json","n":4064},"1w":{"puntaje":-2.46,"niveles":{"resistencias":[{"valor":53.34000015258789},{"valor":54.86},{"valor":55.97233439127604}],"soportes":[{"valor":45.845001220703125},{"valor":45.01200550015145},{"valor":39.40999984741211}],"poc":62.934875946044926},"divergencias":[{"indicador":"macd","nombre_indicador":"MACD","tipo":"alcista","estado":"en formación","desde":"2026-07-13T00:00:00+00:00","hasta":"2026-10-19T00:00:00+00:00","precio_anterior":54.86,"precio_nuevo":53.13,"valor_anterior":-3.0106317,"valor_nuevo":-0.83667333,"metodo":"jorobas","patron":"clasica","clase":"regular","desde_valor":"2026-07-13T00:00:00+00:00","hasta_valor":"2026-10-19T00:00:00+00:00","segundo_chico":null},{"indicador":"sqz_mom","nombre_indicador":"Squeeze","tipo":"alcista","estado":"en formación","desde":"2026-06-29T00:00:00+00:00","hasta":"2026-10-19T00:00:00+00:00","precio_anterior":56.7,"precio_nuevo":53.13,"valor_anterior":-18.132412,"valor_nuevo":-2.5248786,"metodo":"jorobas","patron":"doble valle","clase":"regular","desde_valor":"2026-06-29T00:00:00+00:00","hasta_valor":"2026-10-19T00:00:00+00:00","segundo_chico":null}],"empalme":"Antes del 26/01/2026, velas de Yahoo SI=F, desde el 03/01/2011.","estado":{"estado":"Rango","fuerza":false,"texto":"Rango","velas":5,"duracion":"5 semanas","desde":"2026-09-21T00:00:00+00:00","puntaje_rango":0.6,"adx":15.6,"senales":["ADX con pendiente negativa","MACD con histogramas chicos","Squeeze activado prolongado"],"senales_no":["MACD cruzándose cerca del cero","volumen bajo o decreciente"],"piso":53.13,"techo":67.59,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/XAGUSDT_1w.json","n":825}}},{"simbolo":"BTCUSDT","mercado":"spot","precio":77243.88,"puntaje":2.05,"sesgo":"neutral","accion":false,"tfs":{"15m":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"","estado":null,"archivo":"velas/BTCUSDT_15m.json","n":37942,"archivo_divergencias":"velas/BTCUSDT_divergencias_15m.json","n_divergencias":1902},"1h":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"","estado":null,"archivo":"velas/BTCUSDT_1h.json","n":35044,"archivo_divergencias":"velas/BTCUSDT_divergencias_1h.json","n_divergencias":2084},"4h":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 17/08/2017, velas de Bitstamp BTCUSD, desde el 18/08/2011.","estado":null,"archivo":"velas/BTCUSDT_4h.json","n":33300,"archivo_divergencias":"velas/BTCUSDT_divergencias_4h.json","n_divergencias":1992},"1d":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 17/08/2017, velas de Bitstamp BTCUSD, desde el 18/08/2011.","estado":{"estado":"Rango","fuerza":false,"texto":"Rango","velas":21,"duracion":"21 días","desde":"2026-10-10T00:00:00+00:00","puntaje_rango":0.8,"adx":19.2,"senales":["ADX cayendo desde arriba o bajo 23","EMA 55 horizontal","valles del Squeeze más chicos","Squeeze activado prolongado"],"senales_no":["volumen bajo o decreciente"],"piso":76325.98,"techo":84898.0,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/BTCUSDT_1d.json","n":5553,"archivo_divergencias":"velas/BTCUSDT_divergencias_1d.json","n_divergencias":269},"1w":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 14/08/2017, velas de Bitstamp BTCUSD, desde el 15/08/2011.","estado":{"estado":"Alcista","fuerza":false,"texto":"Alcista sin fuerza","velas":3,"duracion":"3 semanas","desde":"2026-10-05T00:00:00+00:00","puntaje_rango":0.2,"adx":26.5,"senales":["ADX con pendiente negativa"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/BTCUSDT_1w.json","n":793,"archivo_divergencias":"velas/BTCUSDT_divergencias_1w.json","n_divergencias":29},"1M":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 17/08/2017, velas de Bitstamp BTCUSD, desde el 18/08/2011.","estado":null,"archivo":"velas/BTCUSDT_1M.json","n":182,"archivo_divergencias":"velas/BTCUSDT_divergencias_1M.json","n_divergencias":5}},"id":"BTCUSDT_divergencias","historial":true},{"simbolo":"ETHUSDT","mercado":"spot","precio":2241.28,"puntaje":-4.3,"sesgo":"bajista moderado","accion":false,"tfs":{"15m":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"","estado":null,"archivo":"velas/ETHUSDT_15m.json","n":37942,"archivo_divergencias":"velas/ETHUSDT_divergencias_15m.json","n_divergencias":1969},"1h":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"","estado":null,"archivo":"velas/ETHUSDT_1h.json","n":35044,"archivo_divergencias":"velas/ETHUSDT_divergencias_1h.json","n_divergencias":2093},"4h":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 17/08/2017, velas de Bitfinex ETHUSD y, antes, Kraken XETHZUSD, desde el 01/01/2016.","estado":null,"archivo":"velas/ETHUSDT_4h.json","n":23624,"archivo_divergencias":"velas/ETHUSDT_divergencias_4h.json","n_divergencias":1365},"1d":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 17/08/2017, velas de Bitfinex ETHUSD y, antes, Kraken XETHZUSD, desde el 01/01/2016.","estado":{"estado":"Bajista","fuerza":true,"texto":"Bajista con fuerza","velas":2,"duracion":"2 días","desde":"2026-10-29T00:00:00+00:00","puntaje_rango":0.6,"adx":29.9,"senales":["EMA 55 horizontal","Squeeze activado prolongado","volumen bajo o decreciente"],"senales_no":["ADX cayendo desde arriba o bajo 23","valles del Squeeze más chicos"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":7,"unidad":"días"},"archivo":"velas/ETHUSDT_1d.json","n":3949,"archivo_divergencias":"velas/ETHUSDT_divergencias_1d.json","n_divergencias":243},"1w":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 14/08/2017, velas de Bitfinex ETHUSD y, antes, Kraken XETHZUSD, desde el 04/01/2016.","estado":{"estado":"Bajista","fuerza":false,"texto":"Bajista sin fuerza","velas":2,"duracion":"2 semanas","desde":"2026-10-12T00:00:00+00:00","puntaje_rango":0.2,"adx":20.0,"senales":["ADX con pendiente negativa"],"senales_no":["MACD con histogramas chicos","MACD cruzándose cerca del cero","Squeeze activado prolongado","volumen bajo o decreciente"],"piso":null,"techo":null,"disparo_hace":null,"duracion_min":4,"unidad":"semanas"},"archivo":"velas/ETHUSDT_1w.json","n":564,"archivo_divergencias":"velas/ETHUSDT_divergencias_1w.json","n_divergencias":20},"1M":{"puntaje":null,"niveles":{"resistencias":[],"soportes":[],"poc":null},"divergencias":[],"empalme":"Antes del 17/08/2017, velas de Bitfinex ETHUSD y, antes, Kraken XETHZUSD, desde el 01/01/2016.","estado":null,"archivo":"velas/ETHUSDT_1M.json","n":130,"archivo_divergencias":"velas/ETHUSDT_divergencias_1M.json","n_divergencias":1}},"id":"ETHUSDT_divergencias","historial":true}],"umbrales":{"4h":[3.2,5.8],"1d":[3.3,5.8],"1w":[3.2,5.5],"general":[2.6,4.9]}}</script>
+<script>/* Indicadores del analizador, en JavaScript.
+ *
+ * Réplica línea por línea de src/tlbot/indicators.py, para que la página de
+ * gráficos pueda recalcularlos sobre velas en vivo y den los mismos números
+ * que el informe. tools/graficos.py verifica la igualdad con Node antes de
+ * armar la página: si alguien toca una fórmula de un lado y no del otro, el
+ * armado falla.
+ *
+ * Todas las funciones reciben y devuelven arreglos del mismo largo, con NaN
+ * donde el indicador todavía no existe.
+ */
+(function (raiz) {
+  "use strict";
+
+  const nan = (n) => new Array(n).fill(NaN);
+  const esNum = (v) => typeof v === "number" && !Number.isNaN(v);
+
+  // Suavizado exponencial sembrado con la media de los primeros `largo`
+  // valores válidos: así inicializan ta.ema y ta.rma de TradingView.
+  function sembrado(vals, alfa, largo) {
+    const n = vals.length;
+    const out = nan(n);
+    const pos = vals.findIndex(esNum);
+    if (pos < 0) return out;
+    const inicio = pos + largo - 1;
+    if (inicio >= n) return out;
+    let suma = 0, cuenta = 0;
+    for (let i = pos; i <= inicio; i++) if (esNum(vals[i])) { suma += vals[i]; cuenta++; }
+    let prev = suma / cuenta;
+    out[inicio] = prev;
+    for (let i = inicio + 1; i < n; i++) {
+      if (esNum(vals[i])) prev = prev + alfa * (vals[i] - prev);
+      out[i] = prev;
+    }
+    return out;
+  }
+
+  const ema = (v, l) => sembrado(v, 2 / (l + 1), l);
+  const rma = (v, l) => sembrado(v, 1 / l, l);
+
+  // Media simple con ventana completa: un NaN en la ventana da NaN, como
+  // rolling(l, min_periods=l) de pandas.
+  function sma(v, l) {
+    const out = nan(v.length);
+    for (let i = l - 1; i < v.length; i++) {
+      let s = 0, ok = true;
+      for (let j = i - l + 1; j <= i; j++) { if (!esNum(v[j])) { ok = false; break; } s += v[j]; }
+      if (ok) out[i] = s / l;
+    }
+    return out;
+  }
+
+  function extremo(v, l, mayor) {
+    const out = nan(v.length);
+    for (let i = l - 1; i < v.length; i++) {
+      let m = mayor ? -Infinity : Infinity, ok = true;
+      for (let j = i - l + 1; j <= i; j++) {
+        if (!esNum(v[j])) { ok = false; break; }
+        m = mayor ? Math.max(m, v[j]) : Math.min(m, v[j]);
+      }
+      if (ok) out[i] = m;
+    }
+    return out;
+  }
+
+  function rangoVerdadero(h, l, c) {
+    return h.map((_, i) => i === 0
+      ? h[0] - l[0]
+      : Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])));
+  }
+
+  // ta.linreg(fuente, largo, 0): el valor de la recta ajustada en la última
+  // vela de la ventana.
+  function linreg(y, largo) {
+    const out = nan(y.length);
+    let sx = 0, sxx = 0;
+    for (let x = 0; x < largo; x++) { sx += x; sxx += x * x; }
+    const den = largo * sxx - sx * sx;
+    for (let i = largo - 1; i < y.length; i++) {
+      let sy = 0, sxy = 0, ok = true;
+      for (let x = 0; x < largo; x++) {
+        const v = y[i - largo + 1 + x];
+        if (!esNum(v)) { ok = false; break; }
+        sy += v; sxy += x * v;
+      }
+      if (!ok) continue;
+      const pend = (largo * sxy - sx * sy) / den;
+      const ord = (sy - pend * sx) / largo;
+      out[i] = ord + pend * (largo - 1);
+    }
+    return out;
+  }
+
+  function rsi(c, largo) {
+    const delta = c.map((v, i) => (i === 0 ? NaN : v - c[i - 1]));
+    const gan = delta.map((d) => (esNum(d) ? Math.max(d, 0) : NaN));
+    const per = delta.map((d) => (esNum(d) ? Math.max(-d, 0) : NaN));
+    const ag = rma(gan, largo), ap = rma(per, largo);
+    return ag.map((g, i) => {
+      const p = ap[i];
+      if (p === 0) return 100;
+      if (!esNum(g) || !esNum(p)) return NaN;
+      return 100 - 100 / (1 + g / p);
+    });
+  }
+
+  function macd(c, rapida, lenta, senal) {
+    const ef = ema(c, rapida), el = ema(c, lenta);
+    const linea = ef.map((v, i) => v - el[i]);
+    const sen = ema(linea, senal);
+    return { macd: linea, senal: sen, hist: linea.map((v, i) => v - sen[i]) };
+  }
+
+  function adx(h, l, c, largoDi, suavizado) {
+    const n = h.length;
+    const mas = nan(n).fill(0), menos = nan(n).fill(0);
+    for (let i = 1; i < n; i++) {
+      const sube = h[i] - h[i - 1], baja = -(l[i] - l[i - 1]);
+      mas[i] = sube > baja && sube > 0 ? sube : 0;
+      menos[i] = baja > sube && baja > 0 ? baja : 0;
+    }
+    const tr = rma(rangoVerdadero(h, l, c), largoDi);
+    const rMas = rma(mas, largoDi), rMenos = rma(menos, largoDi);
+    const dx = tr.map((t, i) => {
+      const p = 100 * rMas[i] / t, m = 100 * rMenos[i] / t;
+      const s = p + m;
+      return s === 0 || !esNum(s) ? NaN : 100 * Math.abs(p - m) / s;
+    });
+    return rma(dx, suavizado);
+  }
+
+  // Momento del Squeeze de LazyBear: regresión lineal del precio contra la
+  // media entre el centro del canal y la media simple.
+  function squeeze(h, l, c, kc) {
+    const hh = extremo(h, kc, true), ll = extremo(l, kc, false), m = sma(c, kc);
+    const base = c.map((v, i) => v - ((hh[i] + ll[i]) / 2 + m[i]) / 2);
+    return linreg(base, kc);
+  }
+
+  /* Todo lo que dibuja la página, sobre un juego de velas {o,h,l,c}. */
+  function calcular(velas, p) {
+    const h = velas.h, l = velas.l, c = velas.c;
+    const m = macd(c, p.macd_fast, p.macd_slow, p.macd_signal);
+    return {
+      ema_rapida: ema(c, p.ema_fast),
+      ema_lenta: ema(c, p.ema_slow),
+      ema_200: ema(c, 200),
+      sqz: squeeze(h, l, c, p.kc_length),
+      rsi: rsi(c, p.rsi_length),
+      macd: m.macd,
+      macd_senal: m.senal,
+      macd_hist: m.hist,
+      adx: adx(h, l, c, p.adx_length, p.adx_smoothing),
+    };
+  }
+
+  const api = { calcular, ema, rma, sma, rsi, macd, adx, squeeze, linreg };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else raiz.Indicadores = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>/* Detector de divergencias v2 y recorrido de la historia, en JavaScript.
+ *
+ * Réplica de src/tlbot/divergencias.py (detector v2, solo lo que usa la
+ * página: MACD y Squeeze por jorobas, clásica, doble valle y ocultas) y de
+ * src/tlbot/divergencias_pasadas.py (`vigentes`, `barrer`, `pasadas`). Sirve
+ * para el botón «Actualizar» de la página publicada: trae de Binance las
+ * velas nuevas de BTC y ETH y busca sus divergencias acá, vela por vela,
+ * como lo haría la corrida diaria. `tests/test_divergencias_js.py` compara,
+ * con Node, lo que encuentra contra Python sobre la historia real.
+ *
+ * Las series: { t: [segundos UTC de apertura], h: [...], l: [...] } y los
+ * indicadores de `Indicadores.calcular` sobre la serie entera (macd_hist,
+ * sqz, ema_rapida, ema_lenta), como `divergencias_pasadas.preparar`.
+ */
+(function (raiz) {
+  "use strict";
+
+  // --- Constantes de divergencias.py ----------------------------------------
+  const SEPARACION_MIN = { "4h": 6, "1d": 5, "1w": 4 };
+  const ANTIGUEDAD = { "4h": 14, "1d": 10, "1w": 8 };
+  const ANTIGUEDAD_POR_DEFECTO = 10;
+  const SEPARACION_MIN_POR_DEFECTO = 5;
+  const MARGEN_INVALIDACION_PCT = 0.5;
+  const MIN_PRECIO_PCT = 0.3;
+  const MIN_MOM_DESVIOS = 0.75;
+  const VENTANA_ESCALA = 150;
+  const JOROBA_MINIMA = MIN_MOM_DESVIOS;
+  const JOROBA_MINIMA_SEGUNDA = JOROBA_MINIMA / 3;
+  const RETROCESO_DOBLE_VALLE = 0.5;
+  const DIFERENCIA_MINIMA_PICOS = 0.04;
+  // analisis.VELAS: la ventana que lee el comando (se usa VELAS - 1).
+  const VELAS = { "4h": 1000, "1d": 750, "1w": 400 };
+  // divergencias_pasadas.MINIMO_VELAS
+  const MINIMO_VELAS = 60;
+  const INDICADORES = [["macd", "macd_hist", "MACD"], ["sqz_mom", "sqz", "Squeeze"]];
+
+  const finito = Number.isFinite;
+
+  // Fechas como las escribe Python (`pd.Timestamp.isoformat()` en UTC).
+  const iso = (seg) => new Date(seg * 1000).toISOString().replace(".000Z", "+00:00");
+  // `float(f"{x:.8g}")` de `a_dict`.
+  const ocho = (x) => Number(x.toPrecision(8));
+
+  // La suma por pares de NumPy (`pairwise_sum`), que es la que usa pandas:
+  // con una suma corrida el umbral difería en el último bit y, justo en el
+  // borde, una divergencia podía entrar en un lado y no en el otro.
+  function sumaNumpy(x, lo, n) {
+    if (n < 8) {
+      let s = 0;
+      for (let i = lo; i < lo + n; i++) s += x[i];
+      return s;
+    }
+    if (n <= 128) {
+      const r = x.slice(lo, lo + 8);
+      let i = 8;
+      for (; i < n - (n % 8); i += 8) for (let j = 0; j < 8; j++) r[j] += x[lo + i + j];
+      let s = ((r[0] + r[1]) + (r[2] + r[3])) + ((r[4] + r[5]) + (r[6] + r[7]));
+      for (; i < n; i++) s += x[lo + i];
+      return s;
+    }
+    let n2 = Math.floor(n / 2);
+    n2 -= n2 % 8;
+    return sumaNumpy(x, lo, n2) + sumaNumpy(x, lo + n2, n - n2);
+  }
+
+  // El desvío muestral (ddof=1) de los últimos 150 valores válidos, como
+  // `Series.std()`: media = suma / n, y suma de (media − x)² / (n − 1).
+  function umbral(v, a, b) {
+    const vals = [];
+    for (let i = b; i >= a && vals.length < VENTANA_ESCALA; i--) if (finito(v[i])) vals.push(v[i]);
+    if (vals.length < 20) return Infinity;
+    vals.reverse();
+    const n = vals.length;
+    const m = sumaNumpy(vals, 0, n) / n;
+    const cuad = vals.map((x) => (m - x) ** 2);
+    const desvio = Math.sqrt(sumaNumpy(cuad, 0, n) / (n - 1));
+    return finito(desvio) && desvio > 0 ? desvio * MIN_MOM_DESVIOS : Infinity;
+  }
+
+  // `_jorobas`: los tramos entre cruces por cero dentro de [a, b], con
+  // índices relativos a `a` (como en el recorte de pandas).
+  function jorobas(v, h, l, a, b) {
+    const tramos = [];
+    for (let i = a; i <= b; i++) {
+      const x = v[i];
+      if (!finito(x) || x === 0) continue;
+      const s = x > 0 ? 1 : -1;
+      const u = tramos[tramos.length - 1];
+      if (u && u[0] === s) u[2] = i; else tramos.push([s, i, i]);
+    }
+    return tramos.map(([s, ia, ib]) => {
+      let ip = -1;
+      for (let i = ia; i <= ib; i++) {
+        if (!finito(v[i])) continue;
+        if (ip < 0 || (s > 0 ? v[i] > v[ip] : v[i] < v[ip])) ip = i;
+      }
+      let borde = s > 0 ? -Infinity : Infinity;
+      for (let i = ia; i <= ib; i++) borde = s > 0 ? Math.max(borde, h[i]) : Math.min(borde, l[i]);
+      return { signo: s, inicio: ia - a, fin: ib - a, i_pico: ip - a, pico: v[ip], i_precio: ip - a,
+               precio: s > 0 ? h[ip] : l[ip], borde };
+    });
+  }
+
+  function sirveJorobas(pa, pn, ka, kn, bajista, oculta) {
+    if (![pa, pn, ka, kn].every(finito)) return false;
+    if (pa <= 0 || ka === 0) return false;
+    const avance = (pn / pa - 1) * 100;
+    const A = Math.abs(ka), N = Math.abs(kn);
+    if (oculta) {
+      const ok = bajista ? -avance >= MIN_PRECIO_PCT : avance >= MIN_PRECIO_PCT;
+      return ok && N >= A * (1 + DIFERENCIA_MINIMA_PICOS);
+    }
+    const ok = bajista ? avance >= MIN_PRECIO_PCT : -avance >= MIN_PRECIO_PCT;
+    return ok && N <= A * (1 - DIFERENCIA_MINIMA_PICOS);
+  }
+
+  // `_vigente` y `fallida`: ¿el precio pasó el borde después de la vela?
+  function pasoDespues(S, a, b, iRel, valor, bajista, estricto) {
+    const margen = 1 + MARGEN_INVALIDACION_PCT / 100;
+    let ext = bajista ? -Infinity : Infinity, hay = false;
+    for (let i = a + iRel + 1; i <= b; i++) {
+      hay = true;
+      ext = bajista ? Math.max(ext, S.h[i]) : Math.min(ext, S.l[i]);
+    }
+    if (!hay) return false;
+    if (estricto) return bajista ? ext > valor * margen : ext < valor / margen;  // fallida
+    return bajista ? !(ext <= valor * margen) : !(ext >= valor / margen);  // no vigente
+  }
+
+  // Una ventana [a, b] de la serie, con lo que comparten las búsquedas.
+  function ventana(S, ind, a, b, tf) {
+    const memo = {};
+    return {
+      S, ind, a, b, tf, n: b - a + 1,
+      idx: (i) => S.t[a + i],
+      jorobasDe(col) {
+        if (!memo[col]) {
+          const u = umbral(ind[col], a, b);
+          memo[col] = { umbral: u, jorobas: finito(u) ? jorobas(ind[col], S.h, S.l, a, b) : [] };
+        }
+        return memo[col];
+      },
+    };
+  }
+
+  function porJorobas(W, bajista, nombre, col, oculta) {
+    const { umbral: u, jorobas: js } = W.jorobasDe(col);
+    if (!finito(u)) return null;
+    const signo = bajista ? 1 : -1;
+    const minimo = u / MIN_MOM_DESVIOS * JOROBA_MINIMA;
+    const piso = u / MIN_MOM_DESVIOS * JOROBA_MINIMA_SEGUNDA;
+    const propias = js.filter((j) => j.signo === signo && Math.abs(j.pico) >= piso);
+    if (propias.length < 2) return null;
+    const nueva = propias[propias.length - 1];
+    const grandes = propias.slice(0, -1).filter((j) => Math.abs(j.pico) >= minimo);
+    if (!grandes.length) return null;
+    const ant = grandes[grandes.length - 1];
+    const ultima = W.n - 1;
+    const abierta = nueva.fin === ultima;
+    const antiguedad = ultima - nueva.i_precio;
+    if (!abierta && antiguedad > (ANTIGUEDAD[W.tf] ?? ANTIGUEDAD_POR_DEFECTO)) return null;
+    const separacion = nueva.i_precio - ant.i_precio;
+    if (separacion < (SEPARACION_MIN[W.tf] ?? SEPARACION_MIN_POR_DEFECTO)) return null;
+    if (!sirveJorobas(ant.precio, nueva.precio, ant.pico, nueva.pico, bajista, oculta)) return null;
+    if (pasoDespues(W.S, W.a, W.b, nueva.i_precio, nueva.borde, bajista, false)) return null;
+    return {
+      indicador: nombre, nombre_indicador: INDICADORES.find((x) => x[0] === nombre)[2],
+      tipo: bajista ? "bajista" : "alcista", clase: oculta ? "oculta" : "regular",
+      estado: abierta && nueva.i_pico === ultima ? "en formación" : "confirmada",
+      desde: iso(W.idx(ant.i_precio)), hasta: iso(W.idx(nueva.i_precio)),
+      metodo: "jorobas", patron: "clasica",
+      desde_valor: iso(W.idx(ant.i_pico)), hasta_valor: iso(W.idx(nueva.i_pico)),
+      precio_anterior: ant.precio, precio_nuevo: nueva.precio,
+      valor_anterior: ocho(ant.pico), valor_nuevo: ocho(nueva.pico),
+      segundo_chico: Math.abs(nueva.pico) < minimo,
+      _i: nueva.i_precio,
+    };
+  }
+
+  function dobleValle(W, bajista, nombre, col) {
+    const { umbral: u, jorobas: js } = W.jorobasDe(col);
+    if (!finito(u)) return null;
+    const signo = bajista ? 1 : -1;
+    const minimo = u / MIN_MOM_DESVIOS * JOROBA_MINIMA;
+    const propias = js.filter((j) => j.signo === signo && Math.abs(j.pico) >= minimo);
+    if (!propias.length) return null;
+    const j = propias[propias.length - 1];
+    const ultima = W.n - 1;
+    const abierta = j.fin === ultima;
+    const v = W.ind[col];
+    const A = W.a + j.inicio, B = W.a + j.fin;
+    const U = [], P = [];
+    for (let i = A; i <= B; i++) {
+      const x = signo * v[i];
+      U.push(finito(x) ? x : 0);
+      P.push(bajista ? W.S.h[i] : W.S.l[i]);
+    }
+    const argmax = (desde, hasta) => { let k = desde; for (let i = desde; i < hasta; i++) if (U[i] > U[k]) k = i; return k; };
+    for (let t = U.length - 2; t > 0; t--) {
+      if (!(U[t] < U[t - 1] && U[t] <= U[t + 1])) continue;
+      const i1 = argmax(0, t), i2 = argmax(t, U.length);
+      const p1 = U[i1], p2 = U[i2];
+      if (U[t] > (1 - RETROCESO_DOBLE_VALLE) * p1) continue;
+      if (p2 <= U[t]) continue;
+      if (!sirveJorobas(P[i1], P[i2], signo * p1, signo * p2, bajista, false)) continue;
+      const antiguedad = ultima - (j.inicio + i2);
+      if (!abierta && antiguedad > (ANTIGUEDAD[W.tf] ?? ANTIGUEDAD_POR_DEFECTO)) return null;
+      if (i2 - i1 < (SEPARACION_MIN[W.tf] ?? SEPARACION_MIN_POR_DEFECTO)) continue;
+      let borde = bajista ? -Infinity : Infinity;
+      for (let i = t; i < P.length; i++) borde = bajista ? Math.max(borde, P[i]) : Math.min(borde, P[i]);
+      if (pasoDespues(W.S, W.a, W.b, j.inicio + i2, borde, bajista, false)) return null;
+      return {
+        indicador: nombre, nombre_indicador: INDICADORES.find((x) => x[0] === nombre)[2],
+        tipo: bajista ? "bajista" : "alcista", clase: "regular",
+        estado: abierta && j.inicio + i2 === ultima ? "en formación" : "confirmada",
+        desde: iso(W.idx(j.inicio + i1)), hasta: iso(W.idx(j.inicio + i2)),
+        metodo: "jorobas", patron: "doble valle",
+        desde_valor: iso(W.idx(j.inicio + i1)), hasta_valor: iso(W.idx(j.inicio + i2)),
+        precio_anterior: P[i1], precio_nuevo: P[i2],
+        valor_anterior: ocho(signo * p1), valor_nuevo: ocho(signo * p2),
+        segundo_chico: false,
+        _i: j.inicio + i2,
+      };
+    }
+    return null;
+  }
+
+  // `fallida`: el precio pasó el segundo extremo, con margen.
+  const fallida = (W, d) => pasoDespues(W.S, W.a, W.b, d._i, d.precio_nuevo, d.tipo === "bajista", true);
+
+  // `en_tendencia`: la cascada EMA10/EMA55 en la última vela, a favor.
+  function enTendencia(W, d) {
+    const r = W.ind.ema_rapida[W.b], l = W.ind.ema_lenta[W.b];
+    if (!finito(r) || !finito(l)) return false;
+    return (r > l) === (d.tipo === "alcista");
+  }
+
+  // `divergencias_pasadas.vigentes` con el detector v2 (sin las «chicas»
+  // aparte: en v2 ya están dentro de la clásica).
+  function vigentes(S, ind, a, b, tf) {
+    const W = ventana(S, ind, a, b, tf);
+    const salida = [];
+    for (const [nombre, col] of INDICADORES) {
+      for (const bajista of [true, false]) {
+        const d = porJorobas(W, bajista, nombre, col, false);
+        if (d && !fallida(W, d)) salida.push(d);
+      }
+      for (const bajista of [true, false]) {
+        const d = dobleValle(W, bajista, nombre, col);
+        if (d && !fallida(W, d)) salida.push(d);
+      }
+    }
+    for (const [nombre, col] of INDICADORES) {
+      for (const bajista of [true, false]) {
+        const d = porJorobas(W, bajista, nombre, col, true);
+        if (d && enTendencia(W, d) && !fallida(W, d)) salida.push(d);
+      }
+    }
+    return salida.map((d) => { const r = Object.assign({}, d); delete r._i; return r; });
+  }
+
+  const clave = (d) => [d.indicador, d.tipo, d.clase, d.patron, d.desde, d.hasta].join("|");
+
+  // `barrer`: las confirmadas que la lectura habría mostrado entre las velas
+  // `desde` y `hasta` (incluidas), sumadas a `halladas` (por clave).
+  function barrer(S, ind, tf, desde, hasta, halladas) {
+    const largo = (VELAS[tf] ?? 500) - 1;
+    for (let i = desde; i <= hasta; i++) {
+      const a = Math.max(0, i + 1 - largo);
+      const cuando = iso(S.t[i]);
+      for (const d of vigentes(S, ind, a, i, tf)) {
+        if (d.estado !== "confirmada") continue;
+        const k = clave(d);
+        if (halladas.has(k)) halladas.get(k).ultima = cuando;
+        else halladas.set(k, Object.assign(d, { primera: cuando, ultima: cuando }));
+      }
+    }
+    return halladas;
+  }
+
+  // `_fallo`: la vela en que el precio pasó el extremo mientras se mostraba.
+  function fallo(S, r, iUltima) {
+    const ib = S.t.indexOf(Date.parse(r.hasta) / 1000);
+    const fin = Math.min(iUltima + 1, S.t.length - 1);
+    if (ib < 0 || fin <= ib) return null;
+    const margen = 1 + MARGEN_INVALIDACION_PCT / 100;
+    for (let i = ib + 1; i <= fin; i++) {
+      if (r.tipo === "bajista" ? S.h[i] > r.precio_nuevo * margen : S.l[i] < r.precio_nuevo / margen) return iso(S.t[i]);
+    }
+    return null;
+  }
+
+  // `pasadas` sobre lo ya recorrido: `previas` es la lista publicada (con la
+  // última vela tratada como en `pasadas`), `nPrevias` cuántas velas tenía la
+  // serie entonces. Recorre solo lo nuevo y devuelve la lista completa.
+  function actualizar(S, ind, tf, previas, nPrevias) {
+    const ultimaVieja = nPrevias - 1;
+    const tUltimaVieja = iso(S.t[ultimaVieja]);
+    const tAnterior = iso(S.t[ultimaVieja - 1]);
+    // Lo que `pasadas` agregó solo por la última vela (que no queda en la
+    // caché) se deshace: esa vela se vuelve a recorrer como una más.
+    const halladas = new Map();
+    for (const r0 of previas || []) {
+      if (r0.primera === tUltimaVieja) continue;
+      const r = Object.assign({}, r0, { estado: "confirmada" });
+      delete r.vigente; delete r.fallo;
+      if (r.ultima === tUltimaVieja) r.ultima = tAnterior;
+      halladas.set(clave(r), r);
+    }
+    const n = S.t.length;
+    const desde = Math.max(ultimaVieja, MINIMO_VELAS - 1);
+    if (desde <= n - 2) barrer(S, ind, tf, desde, n - 2, halladas);
+    return cerrar(S, ind, tf, halladas);
+  }
+
+  // La última vela, con las en formación, y `vigente`/`fallo` de cada una.
+  function cerrar(S, ind, tf, halladas) {
+    const n = S.t.length, ultima = iso(S.t[n - 1]);
+    const largo = (VELAS[tf] ?? 500) - 1;
+    for (const d of vigentes(S, ind, Math.max(0, n - largo), n - 1, tf)) {
+      const k = clave(d);
+      if (halladas.has(k)) Object.assign(halladas.get(k), { estado: d.estado, ultima });
+      else halladas.set(k, Object.assign(d, { primera: ultima, ultima }));
+    }
+    const lista = [...halladas.values()].sort((x, y) => (x.hasta < y.hasta ? -1 : x.hasta > y.hasta ? 1 : x.primera < y.primera ? -1 : x.primera > y.primera ? 1 : 0));
+    const pos = new Map(S.t.map((t, i) => [iso(t), i]));
+    for (const r of lista) {
+      r.vigente = r.ultima === ultima;
+      r.fallo = r.vigente ? null : fallo(S, r, pos.get(r.ultima));
+    }
+    return lista;
+  }
+
+  // Toda la serie de una vez (la mensual: son pocas velas).
+  function completas(S, ind, tf) {
+    const n = S.t.length;
+    if (n < MINIMO_VELAS) return [];
+    const halladas = new Map();
+    if (MINIMO_VELAS - 1 <= n - 2) barrer(S, ind, tf, MINIMO_VELAS - 1, n - 2, halladas);
+    return cerrar(S, ind, tf, halladas);
+  }
+
+  // `pagina_graficos.mensual`: meses calendario (UTC) desde las diarias; el
+  // primero se descarta si la serie no arranca el día 1.
+  function mensual(D) {
+    const m = { t: [], o: [], h: [], l: [], c: [] };
+    let clave = null;
+    for (let i = 0; i < D.t.length; i++) {
+      const f = new Date(D.t[i] * 1000);
+      const k = f.getUTCFullYear() * 12 + f.getUTCMonth();
+      if (k !== clave) {
+        clave = k;
+        m.t.push(Date.UTC(f.getUTCFullYear(), f.getUTCMonth(), 1) / 1000);
+        m.o.push(D.o[i]); m.h.push(D.h[i]); m.l.push(D.l[i]); m.c.push(D.c[i]);
+      } else {
+        const j = m.t.length - 1;
+        m.h[j] = Math.max(m.h[j], D.h[i]); m.l[j] = Math.min(m.l[j], D.l[i]); m.c[j] = D.c[i];
+      }
+    }
+    if (D.t.length && new Date(D.t[0] * 1000).getUTCDate() !== 1) for (const k of "tohlc") m[k].shift();
+    return m;
+  }
+
+  const api = { vigentes, barrer, actualizar, completas, mensual, iso, VELAS, MINIMO_VELAS };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else raiz.Divergencias = api;
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+(function () {
+  "use strict";
+  const D = JSON.parse(document.getElementById("datos").textContent);
+  // Orden de la lista: por el puntaje general (el ranking del analizador) o
+  // por el de una temporalidad, de mayor a menor o al revés. Se recuerda en
+  // este navegador.
+  let ordenPor = "general";
+  let ordenDir = -1;  // −1: mayor primero; +1: menor primero
+  try {
+    const o = JSON.parse(localStorage.getItem("orden") || "null");
+    if (o && ["general", "4h", "1d", "1w"].includes(o.por) && (o.dir === 1 || o.dir === -1)) {
+      ordenPor = o.por; ordenDir = o.dir;
+    }
+  } catch (e) { /* sin storage */ }
+  const valorDe = (p, por) => por === "general" ? p.puntaje : ((p.tfs || {})[por] || {}).puntaje;
+  // Un par y su gráfico de todas las divergencias pasadas comparten el
+  // símbolo: se distinguen por `id`.
+  const idDe = (p) => p.id || p.simbolo;
+  function ordenar() {
+    D.pares.sort((a, b) => {
+      // Los de divergencias pasadas, siempre al pie y en su orden.
+      if (!!a.historial !== !!b.historial) return a.historial ? 1 : -1;
+      if (a.historial) return 0;
+      const va = valorDe(a, ordenPor), vb = valorDe(b, ordenPor);
+      if (va == null) return 1;  // sin esa temporalidad: al final
+      if (vb == null) return -1;
+      return ordenDir < 0 ? vb - va : va - vb;
+    });
+  }
+  ordenar();
+  const LW = window.LightweightCharts;
+  const $ = (id) => document.getElementById(id);
+  const TF = { "15m": "15 min", "1h": "1 hora", "4h": "4 horas", "1d": "Diario", "1w": "Semanal", "1M": "Mensual" };
+  // En los gráficos de divergencias pasadas, cuántas flechas a la vista como
+  // máximo para escribir junto a cada una si está confirmada o en formación.
+  const ROTULOS_MAXIMOS = 40;
+  const SEG = { "15m": 900, "1h": 3600, "4h": 4 * 3600, "1d": 86400, "1w": 7 * 86400, "1M": 30 * 86400 };
+  // Las que se ven con hora (y corridas a UTC−3); el resto, por su fecha.
+  const CON_HORA = new Set(["15m", "1h", "4h"]);
+
+  let par = idDe(D.pares[0]), tf = "1d";
+  let grafico = null;
+  let estados = null;  // la franja y las cajas de tendencia o rango del gráfico vigente
+  // Las divergencias apagadas desde las claves: un indicador o «oculta».
+  let apagadas = new Set();
+  try { apagadas = new Set(JSON.parse(localStorage.getItem("divergencias-apagadas") || "[]")); } catch (e) { /* sin storage */ }
+  // Precio en escala logarítmica por defecto: con años de historia, un
+  // movimiento del 10 % mide lo mismo a 1.000 que a 100.000. Solo el panel
+  // del precio; los indicadores (Squeeze, MACD) cruzan el cero y van lineales.
+  let logaritmica = true;
+  try { if (localStorage.getItem("escala") === "lineal") logaritmica = false; } catch (e) { /* sin storage */ }
+
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const num = (v) => v == null || !isFinite(v) ? "—" : v.toLocaleString("es-AR", { maximumSignificantDigits: 6 });
+  const firmado = (v) => (v >= 0 ? "+" : "") + v.toFixed(1);
+  // El color sigue a la categoría: el umbral de «neutral» de cada escala.
+  const clase = (v, escala = "general") => {
+    const u = ((D.umbrales || {})[escala] || (D.umbrales || {}).general || [1.5])[0];
+    return v > u ? "alza" : v < -u ? "baja" : "plano";
+  };
+  const token = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  // Recibe los tiempos ya corridos: por eso se formatean «en UTC».
+  const hora = (seg) => CON_HORA.has(tf)
+    ? new Date(seg * 1000).toLocaleString("es-AR", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) + " UTC−3"
+    : new Date(seg * 1000).toLocaleDateString("es-AR", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "2-digit" });
+
+  /* ---------- datos ---------- */
+  // Todo se reconstruye desde las velas guardadas: los indicadores se
+  // recalculan acá mismo, con las fórmulas del informe. La página no le pide
+  // nada a Binance. Las velas de cada par y temporalidad viajan en su propio
+  // archivo (`velas/BTCUSDT_1d.json`), publicado junto a la página, y se
+  // piden la primera vez que se eligen: así la página no crece con la
+  // historia y ningún archivo se acerca al tope de 16 MB.
+  // Hora de Argentina (UTC−3). La librería dibuja el eje en UTC, así que
+  // las velas de 15 minutos, 1 hora y 4 horas se corren 3 horas. Las
+  // diarias y semanales no: abren a las 00:00 UTC (las 21:00 del día
+  // anterior en Argentina) y, corridas, quedarían con la fecha de ayer. Se
+  // muestran por su fecha.
+  const DESFASE = 3 * 3600;
+  const corrimiento = (t) => (CON_HORA.has(t) ? DESFASE : 0);
+  const cache = new Map();
+  function traerArchivo(clave) {
+    if (!cache.has(clave)) {
+      // `?v=` evita que el navegador use las velas de una publicación
+      // anterior; si el servidor no acepta la consulta, se pide sin ella.
+      const traer = (url) => fetch(url).then((r) => { if (!r.ok) throw new Error(`${clave}: ${r.status}`); return r.json(); });
+      const pedido = traer(clave + "?v=" + encodeURIComponent(D.generado))
+        .catch(() => traer(clave))
+        .catch((err) => { cache.delete(clave); throw err; });
+      cache.set(clave, pedido);
+    }
+    return cache.get(clave);
+  }
+  // Las velas y, en los gráficos de divergencias pasadas, sus divergencias,
+  // que también van en un archivo aparte (en BTC 4 horas pasan de mil).
+  // Las series que el botón «Actualizar BTC y ETH» rehízo en este navegador:
+  // solo las de los gráficos de todas las divergencias.
+  const enVivo = new Map();
+  function cargar(p, t) {
+    const b = p.tfs[t];
+    if (p.historial && enVivo.has(idDe(p) + "|" + t)) return Promise.resolve(enVivo.get(idDe(p) + "|" + t));
+    if (b.t) return Promise.resolve(b);  // velas incrustadas (página vieja o local)
+    if (!b.archivo_divergencias) return traerArchivo(b.archivo);
+    return Promise.all([traerArchivo(b.archivo), traerArchivo(b.archivo_divergencias)])
+      .then(([v, d]) => Object.assign({}, v, { divergencias: d.divergencias }));
+  }
+  const cargado = (b) => b.t || (cache.has(b.archivo) && (!b.archivo_divergencias || cache.has(b.archivo_divergencias)));
+  function velas(b, t) {
+    const d = corrimiento(t);
+    return { t: d ? b.t.map((x) => x - d) : b.t, o: b.o, h: b.h, l: b.l, c: b.c, divergencias: b.divergencias, tramos: b.e };
+  }
+  // Fechas ISO del análisis a los segundos que usa el gráfico (ya corridos).
+  const segDe = (iso, t) => (iso ? Math.floor(Date.parse(iso) / 1000) - corrimiento(t) : NaN);
+  let vigente = null;  // las velas que está mostrando el gráfico
+
+  /* ---------- lista y pestañas ---------- */
+  const cuenta = (n) => (n == null ? "—" : n.toLocaleString("es-AR"));
+  function pintarPares() {
+    const boton = (p, derecha) => `
+      <button class="par" role="tab" data-par="${esc(idDe(p))}" aria-selected="${idDe(p) === par}">
+        <span class="n">${esc(p.simbolo.replace("USDT", ""))}</span>${derecha}
+      </button>`;
+    const normales = D.pares.filter((p) => !p.historial), pasadas = D.pares.filter((p) => p.historial);
+    // Al lado de cada gráfico de divergencias pasadas, cuántas hay en la
+    // temporalidad elegida.
+    $("pares").innerHTML = normales.map((p) => boton(p, valorDe(p, ordenPor) == null ? '<span class="p plano">—</span>'
+        : `<span class="p ${clase(valorDe(p, ordenPor), ordenPor)}">${firmado(valorDe(p, ordenPor))}</span>`)).join("")
+      + (pasadas.length ? '<span class="grupo" role="presentation">Todas las divergencias</span>' : "")
+      + pasadas.map((p) => boton(p, `<span class="p plano" title="divergencias en ${esc(TF[tf] || "")}">${cuenta((p.tfs[tf] || {}).n_divergencias)}</span>`)).join("");
+    $("pares").querySelectorAll(".par").forEach((b) => b.addEventListener("click", () => {
+      par = b.dataset.par; pintarPares(); mostrar(true);
+    }));
+  }
+
+  const mercadoDe = (p) => p.mercado === "yahoo" ? "acción en bolsa" : "Binance " + (p.mercado === "futures" ? "perpetuo" : "spot");
+  function pintarTitulo(p, v) {
+    const ultimo = v ? v.c[v.c.length - 1] : p.precio;
+    $("nombre").textContent = p.simbolo.replace("USDT", "") + (p.accion ? " · acción" : "") + (p.historial ? " · todas las divergencias" : "");
+    $("precio").textContent = num(ultimo);
+    $("meta").textContent = p.historial
+      ? `${mercadoDe(p)} · las que el análisis habría marcado en cada vela`
+      : `${mercadoDe(p)} · estado ${p.sesgo} ${firmado(p.puntaje)}`
+        + ((p.tfs[tf] || {}).estado ? ` · ${TF[tf]}: ${p.tfs[tf].estado.texto} hace ${p.tfs[tf].estado.duracion}` : "");
+    // En los de divergencias pasadas, cada pestaña dice cuántas hay.
+    const marca = (b, t) => p.historial ? `<span class="s plano">${cuenta(b.n_divergencias)}</span>`
+      : b.puntaje == null ? "" : `<span class="s ${clase(b.puntaje, t)}">${firmado(b.puntaje)}</span>`;
+    $("tfs").innerHTML = Object.keys(p.tfs).map((t) => `
+      <button class="tf" role="tab" data-tf="${t}" aria-selected="${t === tf}">
+        ${TF[t]}${marca(p.tfs[t], t)}
+      </button>`).join("");
+    $("tfs").querySelectorAll(".tf").forEach((b) => b.addEventListener("click", () => { tf = b.dataset.tf; pintarPares(); mostrar(true); }));
+  }
+
+  /* ---------- el gráfico ---------- */
+  const serieDe = (tiempos, valores, extra) => tiempos.map((t, i) =>
+    Number.isFinite(valores[i]) ? Object.assign({ time: t, value: valores[i] }, extra ? extra(i) : {}) : { time: t });
+
+  // Las rectas de las divergencias de un panel, dibujadas en el lienzo de la
+  // serie de ese panel con un primitivo de la librería. Antes iba una serie
+  // por recta, y el gráfico de todas las divergencias de BTC en 4 horas
+  // (más de mil) se volvía inusable. Las coordenadas se piden en cada
+  // cuadro: la x por el índice de la vela y la y por la escala de la serie,
+  // así siguen al zoom, al desplazamiento y a la escala logarítmica.
+  class Rectas {
+    constructor(lista) {
+      this.lista = lista;
+      this.resaltadas = new Set();
+      this.vista = { zOrder: () => "top", renderer: () => ({ draw: (destino) => this.dibujar(destino) }) };
+    }
+    attached({ chart, series, requestUpdate }) { this.chart = chart; this.serie = series; this.pedir = requestUpdate; }
+    detached() { this.chart = null; }
+    updateAllViews() {}
+    paneViews() { return [this.vista]; }
+    resaltar(conjunto) { this.resaltadas = conjunto; if (this.pedir) this.pedir(); }
+    dibujar(destino) {
+      if (!this.chart || !this.lista.length) return;
+      const ts = this.chart.timeScale(), rango = ts.getVisibleLogicalRange();
+      destino.useMediaCoordinateSpace(({ context: c }) => {
+        c.save();
+        c.lineCap = "round";
+        for (const r of this.lista) {
+          if (rango && (r.b < rango.from - 2 || r.a > rango.to + 2)) continue;  // fuera de la vista
+          const x1 = ts.logicalToCoordinate(r.a), x2 = ts.logicalToCoordinate(r.b);
+          const y1 = this.serie.priceToCoordinate(r.va), y2 = this.serie.priceToCoordinate(r.vb);
+          if (x1 == null || x2 == null || y1 == null || y2 == null) continue;
+          const fuerte = this.resaltadas.has(r.d);
+          c.strokeStyle = c.fillStyle = r.color;
+          c.lineWidth = r.ancho + (fuerte ? 1.5 : 0);
+          c.setLineDash(r.guiones);
+          c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+          c.setLineDash([]);
+          for (const [x, y] of [[x1, y1], [x2, y2]]) { c.beginPath(); c.arc(x, y, fuerte ? 4 : 3, 0, 2 * Math.PI); c.fill(); }
+        }
+        c.restore();
+      });
+    }
+  }
+
+  // Tendencia o rango (semanal y diario): una franja al pie del panel de
+  // precio con el estado de cada tramo de la historia, y una caja en cada
+  // rango, entre su piso y su techo. Tramos: [inicio, fin, código, piso, techo].
+  const COLOR_ESTADO = { "A+": "--up", "A": "--up-soft", "B+": "--down", "B": "--down-soft", "r": "--accent", "R": "--accent" };
+  const NOMBRE_ESTADO = { "A+": "Alcista con fuerza", "A": "Alcista sin fuerza", "B+": "Bajista con fuerza",
+                          "B": "Bajista sin fuerza", "r": "Rango en formación", "R": "Rango" };
+  class Estados {
+    constructor(tramos, tiempos) {
+      const indice = new Map(tiempos.map((t, i) => [t, i]));
+      this.lista = tramos.map(([a, b, cod, piso, techo]) => ({ a: indice.get(a), b: indice.get(b), cod, piso, techo }))
+        .filter((x) => x.a != null && x.b != null);
+      this.vista = { zOrder: () => "bottom", renderer: () => ({ draw: (destino) => this.dibujar(destino) }) };
+    }
+    attached({ chart, series }) { this.chart = chart; this.serie = series; }
+    detached() { this.chart = null; }
+    updateAllViews() {}
+    paneViews() { return [this.vista]; }
+    tramoEn(i) { return this.lista.find((x) => i >= x.a && i <= x.b); }
+    dibujar(destino) {
+      if (!this.chart || !this.lista.length) return;
+      const ts = this.chart.timeScale(), rango = ts.getVisibleLogicalRange();
+      const medio = (ts.options().barSpacing || 6) / 2;
+      destino.useMediaCoordinateSpace(({ context: c, mediaSize }) => {
+        c.save();
+        for (const x of this.lista) {
+          if (rango && (x.b < rango.from - 2 || x.a > rango.to + 2)) continue;
+          const x1 = ts.logicalToCoordinate(x.a), x2 = ts.logicalToCoordinate(x.b);
+          if (x1 == null || x2 == null) continue;
+          const color = token(COLOR_ESTADO[x.cod]);
+          c.fillStyle = color;
+          c.globalAlpha = 0.9;
+          c.fillRect(x1 - medio, mediaSize.height - 6, x2 - x1 + 2 * medio, 6);
+          if (x.piso == null) continue;
+          const y1 = this.serie.priceToCoordinate(x.techo), y2 = this.serie.priceToCoordinate(x.piso);
+          if (y1 == null || y2 == null) continue;
+          c.globalAlpha = x.cod === "R" ? 0.12 : 0.06;
+          c.fillRect(x1 - medio, y1, x2 - x1 + 2 * medio, y2 - y1);
+          c.globalAlpha = x.cod === "R" ? 0.7 : 0.4;
+          c.strokeStyle = color;
+          c.lineWidth = 1;
+          c.setLineDash(x.cod === "R" ? [] : [4, 3]);
+          c.strokeRect(x1 - medio, y1, x2 - x1 + 2 * medio, y2 - y1);
+          c.setLineDash([]);
+        }
+        c.restore();
+      });
+    }
+  }
+
+  // Confirmada o en formación. En los gráficos de divergencias pasadas solo
+  // se guardan las que llegaron a confirmarse; la vigente puede estar todavía
+  // en formación.
+  const estadoDe = (d) => d.estado === "confirmada" ? "confirmada" : "en formación";
+
+  // Una divergencia en palabras, para el renglón bajo la leyenda.
+  function describir(d, color) {
+    const bajista = d.tipo === "bajista", extremo = bajista ? "máximo" : "mínimo";
+    const fecha = (iso) => hora(segDe(iso, tf));
+    const nombre = d.patron === "doble valle" ? "Doble valle" : "Divergencia";
+    const patron = d.metodo === "jorobas" && d.patron !== "doble valle" ? " (clásica)" : "";
+    const partes = [
+      `<b style="color:${color}">${bajista ? "▼" : "▲"} ${nombre} ${esc(d.tipo)}${d.clase === "oculta" ? " oculta" : ""} de ${esc(d.nombre_indicador)}${patron}</b> · <b>${estadoDe(d)}</b>`,
+      `${extremo} ${num(d.precio_nuevo)} el ${fecha(d.hasta)} contra ${num(d.precio_anterior)} el ${fecha(d.desde)}`,
+    ];
+    if (d.primera) {  // gráfico de divergencias pasadas: cuándo la habría marcado el análisis
+      if (d.vigente) partes.push(`el análisis la marca desde el ${fecha(d.primera)}`);
+      else partes.push(`el análisis la habría marcado del ${fecha(d.primera)} al ${fecha(d.ultima)}`
+        + (d.fallo ? `; dejó de marcarla cuando el precio pasó ese ${extremo}, el ${fecha(d.fallo)}` : ""));
+    }
+    if (d.segundo_chico) partes.push("segundo pico bajo el tamaño mínimo de joroba (pesa como las demás)");
+    return partes.join(" · ");
+  }
+
+  function dibujar(p, v, conservarVista) {
+    const vista = conservarVista && grafico ? grafico.timeScale().getVisibleLogicalRange() : null;
+    if (grafico) { grafico.remove(); grafico = null; }
+    const el = $("grafico");
+    const ind = window.Indicadores.calcular(v, D.params);
+    const fuente = token("--mono").split(",")[0].replace(/"/g, "") || "monospace";
+
+    grafico = LW.createChart(el, {
+      autoSize: true,
+      layout: { background: { type: "solid", color: token("--surface") }, textColor: token("--ink-soft"),
+                fontFamily: fuente, fontSize: 11, panes: { separatorColor: token("--line"), enableResize: true },
+                attributionLogo: false },
+      grid: { vertLines: { color: token("--grid") }, horzLines: { color: token("--grid") } },
+      rightPriceScale: { borderColor: token("--line") },
+      timeScale: { borderColor: token("--line"), timeVisible: CON_HORA.has(tf), secondsVisible: false, rightOffset: 6 },
+      crosshair: { mode: LW.CrosshairMode.Normal },
+      localization: { locale: "es-AR", priceFormatter: (x) => num(x) },
+    });
+
+    const linea = (pane, color, ancho, titulo) => grafico.addSeries(LW.LineSeries,
+      { color, lineWidth: ancho || 1, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false, title: titulo || "" }, pane);
+
+    // 0 · precio y medias
+    const velasS = grafico.addSeries(LW.CandlestickSeries, {
+      upColor: token("--up"), downColor: token("--down"), wickUpColor: token("--up"), wickDownColor: token("--down"),
+      borderVisible: false, priceLineVisible: true }, 0);
+    velasS.setData(v.t.map((t, i) => ({ time: t, open: v.o[i], high: v.h[i], low: v.l[i], close: v.c[i] })));
+    velasS.priceScale().applyOptions({ mode: logaritmica ? LW.PriceScaleMode.Logarithmic : LW.PriceScaleMode.Normal });
+    const e1 = linea(0, token("--ema-r"), 1), e2 = linea(0, token("--ema-l"), 1.5), e3 = linea(0, token("--ema-200"), 1.5);
+    [e1, e2, e3].forEach((s) => s.applyOptions({ lastValueVisible: false }));
+    e1.setData(serieDe(v.t, ind.ema_rapida)); e2.setData(serieDe(v.t, ind.ema_lenta)); e3.setData(serieDe(v.t, ind.ema_200));
+
+    const lectura = p.tfs[tf];
+    const nivel = (precio, color, estilo, titulo) => velasS.createPriceLine({
+      price: precio, color, lineWidth: 1, lineStyle: estilo, axisLabelVisible: true, title: titulo });
+    (lectura.niveles.resistencias || []).forEach((n) => nivel(n.valor, token("--down"), LW.LineStyle.Dotted, "R"));
+    (lectura.niveles.soportes || []).forEach((n) => nivel(n.valor, token("--up"), LW.LineStyle.Dotted, "S"));
+    if (lectura.niveles.poc) nivel(lectura.niveles.poc, token("--ink-faint"), LW.LineStyle.Dashed, "POC");
+    estados = v.tramos && v.tramos.length ? new Estados(v.tramos, v.t) : null;
+    if (estados) velasS.attachPrimitive(estados);
+
+    // 1 · Squeeze, con los cuatro colores de LazyBear
+    const sqz = grafico.addSeries(LW.HistogramSeries, { priceLineVisible: false, lastValueVisible: false }, 1);
+    sqz.setData(serieDe(v.t, ind.sqz, (i) => {
+      const a = ind.sqz[i], b = ind.sqz[i - 1];
+      return { color: a > 0 ? (a > b ? token("--up") : token("--up-soft")) : (a < b ? token("--down") : token("--down-soft")) };
+    }));
+
+    // 2 · RSI
+    const rsi = linea(2, token("--rsi"), 1.2);
+    rsi.setData(serieDe(v.t, ind.rsi));
+    // Niveles de Wilder (1978): 70 sobrecompra y 30 sobreventa, con su rótulo
+    // y su valor en el eje; 50 es la línea media.
+    rsi.createPriceLine({ price: 70, color: token("--down"), lineWidth: 1, lineStyle: LW.LineStyle.Dashed,
+      axisLabelVisible: true, title: "sobrecompra" });
+    rsi.createPriceLine({ price: 30, color: token("--up"), lineWidth: 1, lineStyle: LW.LineStyle.Dashed,
+      axisLabelVisible: true, title: "sobreventa" });
+    rsi.createPriceLine({ price: 50, color: token("--ink-faint"), lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false });
+    // La escala fija de 0 a 100, para que los niveles estén siempre a la vista
+    // aunque el RSI ande lejos de ellos.
+    rsi.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }) });
+
+    // 3 · MACD con los colores del CM MACD de ChrisMoody (CM_Ult_MacD_MTF):
+    // histograma en 4 colores (aqua sube y azul baja sobre cero; rojo baja y
+    // granate sube bajo cero; amarillo si no cambia), línea MACD lima sobre la
+    // señal y roja debajo, señal amarilla, un punto en cada cruce (sobre la
+    // señal, del color de la línea MACD) y la línea del cero.
+    const h = ind.macd_hist, m = ind.macd, s = ind.macd_senal;
+    const hist = grafico.addSeries(LW.HistogramSeries, { priceLineVisible: false, lastValueVisible: false }, 3);
+    hist.setData(serieDe(v.t, h, (i) => {
+      const a = h[i], b = h[i - 1];
+      return { color: token(a > b ? (a > 0 ? "--cm-aqua" : "--cm-maroon") : a < b ? (a > 0 ? "--cm-blue" : "--cm-red") : "--cm-yellow") };
+    }));
+    hist.createPriceLine({ price: 0, color: token("--ink-faint"), lineWidth: 1, lineStyle: LW.LineStyle.Solid, axisLabelVisible: false });
+    const colorMacd = (i) => token(m[i] >= s[i] ? "--cm-lime" : "--cm-red");
+    const senal = linea(3, token("--cm-yellow"), 1.5), macd = linea(3, token("--cm-lime"), 2);
+    senal.setData(serieDe(v.t, s)); macd.setData(serieDe(v.t, m, (i) => ({ color: colorMacd(i) })));
+    // ta.cross de Pine: la diferencia cambia de signo (o sale del cero) de una vela a la otra.
+    const cruces = grafico.addSeries(LW.LineSeries, { lineVisible: false, pointMarkersVisible: true, pointMarkersRadius: 3,
+      priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, 3);
+    cruces.setData(v.t.map((t, i) => {
+      const d = m[i] - s[i], d0 = m[i - 1] - s[i - 1];
+      const cruza = Number.isFinite(d) && Number.isFinite(d0) && ((d > 0 && d0 <= 0) || (d < 0 && d0 >= 0));
+      return cruza ? { time: t, value: s[i], color: colorMacd(i) } : { time: t };
+    }));
+
+    // 4 · ADX, solo la línea
+    const adx = linea(4, token("--ink"), 1.2);
+    adx.setData(serieDe(v.t, ind.adx));
+    adx.createPriceLine({ price: 25, color: token("--ink-faint"), lineWidth: 1, lineStyle: LW.LineStyle.Dotted, axisLabelVisible: false });
+
+    // La escala log es solo del precio. La librería la pasaba también a los
+    // paneles de los indicadores, que cruzan el cero: el Squeeze y el MACD
+    // quedaban como barras saturadas con ejes de cientos de millones.
+    [sqz, rsi, hist, adx].forEach((s) => s.priceScale().applyOptions({ mode: LW.PriceScaleMode.Normal }));
+
+    // Divergencias del análisis. Cada indicador tiene su color; el tipo lo
+    // dice la flecha. Las rectas se anclan a lo que está DIBUJADO: en el
+    // precio, al máximo (bajista) o mínimo (alcista) real de la vela; en el
+    // indicador, al valor del panel en la vela del pico. Así siempre caen
+    // sobre la mecha y sobre la loma del histograma, aunque el informe haya
+    // calculado el indicador sobre una ventana más corta.
+    const COLOR = { sqz_mom: token("--div-sqz"), macd: token("--div-macd"), rsi: token("--div-rsi"), adx: token("--div-adx") };
+    const PANEL = { sqz_mom: 1, rsi: 2, macd: 3, adx: 4 };
+    const SERIE = { sqz_mom: ind.sqz, rsi: ind.rsi, macd: ind.macd_hist, adx: ind.adx };
+    const SOPORTE = [velasS, sqz, rsi, hist, adx];  // la serie de cada panel, donde se dibujan sus rectas
+    const pos = new Map(v.t.map((t, i) => [t, i]));
+    const seg = (iso) => segDe(iso, tf);
+    const todas = v.divergencias || lectura.divergencias || [];
+    const apagada = (d) => apagadas.has(d.indicador) || (d.clase === "oculta" && apagadas.has("oculta"))
+      || (d.segundo_chico && apagadas.has("chica"))
+      // «Solo vigentes»: en los gráficos de divergencias pasadas, esconde las que ya no se marcan.
+      || (p.historial && !d.vigente && apagadas.has("pasadas"));
+    const marcas = [];
+    const rectas = SOPORTE.map(() => []);
+    const dibujadas = [];  // las que se ven, para el renglón bajo el cursor
+    window.__divergencias = [];
+    todas.forEach((d) => {
+      if (apagada(d)) return;
+      const color = COLOR[d.indicador] || token("--ink");
+      const bajista = d.tipo === "bajista";
+      const ia = pos.get(seg(d.desde)), ib = pos.get(seg(d.hasta));
+      const iva = pos.get(seg(d.desde_valor || d.desde)), ivb = pos.get(seg(d.hasta_valor || d.hasta));
+      const serie = SERIE[d.indicador];
+      const control = { indicador: d.indicador, tipo: d.tipo, patron: d.patron || "clasica" };
+      window.__divergencias.push(control);
+      if ([ia, ib, iva, ivb].some((x) => x === undefined) || !serie) { control.error = "fecha fuera de las velas"; return; }
+      const pa = bajista ? v.h[ia] : v.l[ia], pb = bajista ? v.h[ib] : v.l[ib];
+      const xa = serie[iva], xb = serie[ivb];
+      control.precio = [pa, pb, d.precio_anterior, d.precio_nuevo];
+      control.indicadorValores = [xa, xb, d.valor_anterior, d.valor_nuevo];
+      // Las ocultas (continuación, sin peso) van finas y de puntos, para no
+      // confundirlas con las regulares.
+      const oculta = d.clase === "oculta";
+      // Las de segundo pico chico (sin peso, solo para mirar), de guiones cortos.
+      // Las vigentes (las que el análisis marca hoy), más gruesas: en los
+      // gráficos de divergencias pasadas se distinguen de las cientos que ya
+      // se resolvieron.
+      const vigente = !p.historial || d.vigente;
+      const estilo = { color, d, ancho: (oculta || d.segundo_chico ? 1.5 : 2) + (p.historial && vigente ? 1.5 : 0),
+        guiones: oculta ? [1, 4] : d.segundo_chico ? [3, 3] : d.estado === "confirmada" ? [] : [6, 4] };
+      const tramo = (pane, a, va, b, vb) => {
+        if (!(a < b) || !Number.isFinite(va) || !Number.isFinite(vb)) return;
+        rectas[pane].push(Object.assign({ a, va, b, vb }, estilo));
+      };
+      tramo(0, ia, pa, ib, pb);
+      tramo(PANEL[d.indicador], iva, xa, ivb, xb);
+      // Con cientos de divergencias, el texto junto a cada flecha tapa el
+      // gráfico: en los de divergencias pasadas la flecha dice solo si está
+      // confirmada o en formación, y únicamente con el zoom cerca (`rotular`).
+      marcas.push({ time: v.t[ib], position: bajista ? "aboveBar" : "belowBar", color,
+        shape: bajista ? "arrowDown" : "arrowUp", estado: estadoDe(d), vigente: p.historial && vigente,
+        text: p.historial ? "" : `${d.patron === "doble valle" ? "doble valle" : "div."}${oculta ? " oculta" : ""} ${d.tipo} ${d.nombre_indicador} · ${estadoDe(d)}` });
+      dibujadas.push({ d, ib, color });
+    });
+    const capas = rectas.map((lista, i) => { const r = new Rectas(lista); SOPORTE[i].attachPrimitive(r); return r; });
+    // Las claves prenden y apagan las divergencias de cada indicador y las
+    // ocultas. Se listan las que hay en este gráfico, con cuántas son.
+    const presentes = [["sqz_mom", "Squeeze"], ["macd", "MACD (histograma)"], ["rsi", "RSI"], ["adx", "ADX"]]
+      .filter(([k]) => todas.some((d) => d.indicador === k));
+    const cuantas = (f) => p.historial ? ` ${cuenta(todas.filter(f).length)}` : "";
+    const clave = (k, muestra, n) => `<button class="clave" type="button" data-clave="${k}" aria-pressed="${k === "pasadas" ? apagadas.has(k) : !apagadas.has(k)}">${muestra}${n}</button>`;
+    $("claves").innerHTML = "<span>Divergencias:</span>"
+      + (presentes.length ? presentes.map(([k, n]) => clave(k, `<i style="background:${COLOR[k]}"></i>${n}`, cuantas((d) => d.indicador === k))).join("")
+        : "<span>ninguna en esta temporalidad</span>")
+      + (todas.some((d) => d.clase === "oculta") ? clave("oculta", '<i class="puntos"></i>ocultas', cuantas((d) => d.clase === "oculta")) : "")
+      + (p.historial && todas.some((d) => d.vigente) ? clave("pasadas", "solo vigentes", ` ${cuenta(todas.filter((d) => d.vigente).length)}`) : "")
+      + (todas.some((d) => d.segundo_chico) ? clave("chica", '<i class="guiones"></i>segundo pico chico', cuantas((d) => d.segundo_chico)) : "")
+      + "<span>▼ bajista · ▲ alcista · línea punteada: en formación (las demás, confirmadas"
+      + (p.historial ? `; con ${ROTULOS_MAXIMOS} flechas o menos a la vista, cada una lo dice` : "") + ") · fina de puntos: oculta (continuación, sin peso) · guiones cortos: segundo pico bajo el tamaño mínimo de joroba · gruesa: vigente, la que el análisis marca hoy</span>";
+    $("claves").querySelectorAll(".clave").forEach((b) => b.addEventListener("click", () => {
+      const k = b.dataset.clave;
+      if (apagadas.has(k)) apagadas.delete(k); else apagadas.add(k);
+      try { localStorage.setItem("divergencias-apagadas", JSON.stringify([...apagadas])); } catch (e) { /* sin storage */ }
+      dibujar(p, v, true);
+    }));
+    marcas.sort((x, y) => x.time - y.time);
+    const flechas = marcas.length ? LW.createSeriesMarkers(velasS, marcas) : null;
+    if (flechas && p.historial) {
+      // Con pocas flechas a la vista (zoom cerca), cada una dice su estado.
+      let rotuladas = null;
+      const rotular = () => {
+        const r = grafico.timeScale().getVisibleLogicalRange();
+        if (!r) return;
+        const desde = v.t[Math.max(0, Math.floor(r.from))], hasta = v.t[Math.min(v.t.length - 1, Math.ceil(r.to))];
+        const visibles = marcas.filter((m) => m.time >= desde && m.time <= hasta).length;
+        const con = visibles <= ROTULOS_MAXIMOS;
+        if (con === rotuladas) return;
+        rotuladas = con;
+        flechas.setMarkers(marcas.map((m) => Object.assign({}, m, { text: con || m.vigente ? (m.vigente ? `vigente · ${m.estado}` : m.estado) : "" })));
+      };
+      grafico.timeScale().subscribeVisibleLogicalRangeChange(rotular);
+      rotular();
+    }
+
+    // Bajo el cursor: la divergencia de la flecha más cercana, descripta y
+    // resaltada en todos los paneles. La tolerancia es de unos 12 píxeles,
+    // en velas según el zoom, para que siempre sea fácil acertarle a una flecha.
+    let resaltada = null;
+    const detalle = (i) => {
+      let cerca = [];
+      if (i != null && dibujadas.length) {
+        const r = grafico.timeScale().getVisibleLogicalRange();
+        const tol = r ? Math.max(1, Math.round((12 * (r.to - r.from)) / Math.max(1, el.clientWidth - 70))) : 1;
+        const mejor = Math.min(...dibujadas.map((x) => Math.abs(x.ib - i)));
+        if (mejor <= tol) cerca = dibujadas.filter((x) => Math.abs(x.ib - i) === mejor);
+      }
+      const clave = cerca.map((x) => dibujadas.indexOf(x)).join(",");
+      if (clave === resaltada) return;
+      resaltada = clave;
+      const conjunto = new Set(cerca.map((x) => x.d));
+      capas.forEach((c) => c.resaltar(conjunto));
+      $("detalle").innerHTML = cerca.length ? cerca.map((x) => describir(x.d, x.color)).join("<br>")
+        : dibujadas.length ? '<span class="pista">Pasá el cursor por una flecha para ver su divergencia.</span>' : "";
+    };
+    detalle(null);
+
+    // Proporciones: el precio se lleva casi la mitad y los cuatro
+    // indicadores se reparten el resto por igual.
+    const panes = grafico.panes();
+    [3.2, 1, 1, 1, 1].forEach((f, i) => panes[i] && panes[i].setStretchFactor(f));
+
+    // El nombre de cada panel, arriba a la izquierda. Se recoloca cuando
+    // cambia el alto de los paneles (al redimensionar o al arrastrar un
+    // separador).
+    const NOMBRES = [
+      `Precio · EMA ${D.params.ema_fast}/${D.params.ema_slow}/200`,
+      "Squeeze Momentum",
+      `RSI ${D.params.rsi_length}`,
+      `MACD ${D.params.macd_fast}/${D.params.macd_slow}/${D.params.macd_signal}`,
+      `ADX ${D.params.adx_length}`,
+    ];
+    const rotular = () => {
+      el.querySelectorAll(".rotulo").forEach((x) => x.remove());
+      const lista = grafico.panes();
+      let altos = lista.map((pane) => pane.getHeight());
+      // Si la librería todavía no dibujó los paneles, sus altos valen 0: se
+      // estiman con las proporciones y el alto disponible.
+      if (altos.some((h) => !(h > 0))) {
+        const util = el.clientHeight - 28 - (lista.length - 1);
+        const factores = [3.2, 1, 1, 1, 1].slice(0, lista.length);
+        const suma = factores.reduce((x, y) => x + y, 0);
+        altos = factores.map((f) => (util * f) / suma);
+      }
+      let arriba = 0;
+      lista.forEach((pane, i) => {
+        const r = document.createElement("span");
+        r.className = "rotulo";
+        r.textContent = NOMBRES[i] || "";
+        r.style.top = `${Math.round(arriba + 6)}px`;
+        el.appendChild(r);
+        arriba += altos[i] + 1;  // 1 px de separador
+      });
+    };
+    setTimeout(rotular, 30);
+    setTimeout(rotular, 400);  // de nuevo, ya con los paneles dibujados
+    if (window.__observador) window.__observador.disconnect();
+    window.__observador = new ResizeObserver(() => setTimeout(rotular, 30));
+    window.__observador.observe(el);
+
+    // Leyenda con los valores bajo el cursor (o los últimos).
+    const ultimo = v.t.length - 1;
+    const leyenda = (i) => {
+      if (i == null || i < 0 || i > ultimo) i = ultimo;
+      const val = (x, dec) => Number.isFinite(x) ? x.toLocaleString("es-AR", { maximumFractionDigits: dec, maximumSignificantDigits: 6 }) : "—";
+      $("leyenda").innerHTML = `
+        <span>${hora(v.t[i])}</span>
+        <span>A <b>${num(v.o[i])}</b> M <b>${num(v.h[i])}</b> m <b>${num(v.l[i])}</b> C <b>${num(v.c[i])}</b></span>
+        <span style="color:${token("--ema-r")}">EMA${D.params.ema_fast} <b>${val(ind.ema_rapida[i])}</b></span>
+        <span style="color:${token("--ema-l")}">EMA${D.params.ema_slow} <b>${val(ind.ema_lenta[i])}</b></span>
+        <span style="color:${token("--ema-200")}">EMA200 <b>${val(ind.ema_200[i])}</b></span>
+        <span>Squeeze <b>${val(ind.sqz[i])}</b></span>
+        <span>RSI <b>${val(ind.rsi[i], 1)}</b></span>
+        <span>MACD <b>${val(ind.macd[i])}</b> / <b>${val(ind.macd_senal[i])}</b></span>
+        <span>ADX <b>${val(ind.adx[i], 1)}</b></span>`
+        + (estados && estados.tramoEn(i) ? (() => {
+          const x = estados.tramoEn(i);
+          return `<span style="color:${token(COLOR_ESTADO[x.cod])}"><b>${NOMBRE_ESTADO[x.cod]}</b>`
+            + (x.piso != null ? ` ${num(x.piso)} – ${num(x.techo)}` : "") + `</span>`;
+        })() : "");
+    };
+    leyenda(ultimo);
+    grafico.subscribeCrosshairMove((prm) => {
+      const i = prm.logical == null ? null : Math.round(prm.logical);
+      leyenda(i);
+      detalle(i);
+    });
+
+    if (vista) grafico.timeScale().setVisibleLogicalRange(vista);
+    else grafico.timeScale().setVisibleLogicalRange({ from: Math.max(0, v.t.length - 160), to: v.t.length + 8 });
+  }
+
+  /* ---------- estado ---------- */
+  function pintarEstado() {
+    const fecha = new Date(D.generado).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+    $("estado").textContent = `Velas guardadas al ${fecha} UTC−3`;
+  }
+
+  let turno = 0;
+  function mostrar(reiniciar) {
+    const p = D.pares.find((x) => idDe(x) === par) || D.pares[0];
+    if (!p.tfs[tf]) tf = Object.keys(p.tfs)[0];
+    const t = tf, mio = ++turno;
+    pintarTitulo(p, null);
+    if (!cargado(p.tfs[t])) {
+      $("leyenda").textContent = "";
+      $("detalle").textContent = "";
+      const b = p.tfs[t];
+      $("estado-velas").textContent = `Cargando ${b.n.toLocaleString("es-AR")} velas`
+        + (b.archivo_divergencias ? ` y ${cuenta(b.n_divergencias)} divergencias…` : "…");
+    }
+    return cargar(p, t).then((b) => {
+      if (mio !== turno) return;  // mientras tanto se eligió otro par
+      $("estado-velas").textContent = "";
+      const v = velas(b, t);
+      vigente = { p, v };
+      pintarTitulo(p, v);
+      try { dibujar(p, v, !reiniciar); }
+      catch (err) { $("grafico").innerHTML = `<p class="error">No se pudo dibujar: ${esc(err.message)}</p>`; return; }
+      pintarNota(p, v);
+    }).catch((err) => {
+      if (mio !== turno) return;
+      $("estado-velas").textContent = "";
+      $("grafico").innerHTML = `<p class="error">No se pudieron cargar las velas (${esc(err.message)}). Si abriste el archivo desde el disco, el navegador no deja leer los archivos de al lado: abrí la página publicada o servila con <code>python -m http.server</code> desde la carpeta.</p>`;
+    });
+  }
+
+  function pintarNota(p, v) {
+    const partes = [`${v.t.length} velas guardadas, desde el ${hora(v.t[0]).replace(" UTC−3", "")} hasta el ${hora(v.t[v.t.length - 1])}. Los indicadores se reconstruyen a partir de ellas con las mismas fórmulas que el informe.`];
+    const l = p.tfs[tf];
+    if (p.historial) {
+      partes.push("Son todas las divergencias que el análisis habría marcado en el pasado: se recorre la historia vela por vela y en cada una se buscan como hoy (MACD y Squeeze; clásicas, doble valle y ocultas con la tendencia a favor), solo con las velas que había hasta ahí y sobre la misma ventana que lee el comando. Una en formación cuenta recién cuando se confirma, salvo en la última vela. Al pasar el cursor por una flecha se ve cuándo la habría marcado. Son solo para mirar: no cambian ningún puntaje.");
+      if (tf === "1M") partes.push("La mensual se arma agrupando por mes las velas diarias, y sus divergencias se buscan con las reglas de la semanal: no se contrastaron en esta temporalidad.");
+      if (tf === "15m" || tf === "1h") partes.push("El análisis no lee esta temporalidad: son velas spot de Binance, solo las últimas, y sus divergencias se buscan con las reglas de 4 horas (separación, antigüedad y ventana, contadas en velas). No se contrastaron en esta temporalidad.");
+    } else if (tf === "1M") partes.push("La mensual se arma agrupando por mes las velas diarias y no tiene puntaje: el análisis está calibrado en 4 horas, diario y semanal. Sus divergencias se buscan con las reglas de la semanal y son solo para mirar: no se contrastaron en esta temporalidad.");
+    if (l.estado) {
+      const e = l.estado;
+      partes.push(`<b>Tendencia o rango:</b> ${esc(e.texto)} hace ${esc(e.duracion)}`
+        + (e.piso != null ? `, caja ${num(e.piso)} – ${num(e.techo)}` : "")
+        + `; ${e.senales.length} de ${e.senales.length + e.senales_no.length} señales de rango`
+        + (e.disparo_hace != null ? `; el Squeeze se disparó ${e.disparo_hace === 0 ? "en la última vela" : "hace " + e.disparo_hace + " velas"} (el disparo termina el rango)` : "")
+        + `. La franja al pie del precio marca el estado de cada tramo (verde alcista, rojo bajista, más intenso con fuerza: ADX ≥ 23, subiendo y con el DI a favor; ocre, rango) y cada rango tiene su caja entre piso y techo. Describe lo que ya pasó, no anticipa.`);
+    }
+    if (l.empalme) partes.push(esc(l.empalme));
+    if (p.accion && p.mercado === "yahoo") partes.push("Es una acción leída en la bolsa: solo hay velas en horario de bolsa, sin fines de semana.");
+    else if (p.accion) partes.push("Es una acción: el perpetuo opera las 24 horas y la acción solo en horario de bolsa.");
+    $("nota").innerHTML = partes.join(" ");
+  }
+
+  const pintarEscala = () => {
+    $("escala").textContent = logaritmica ? "Escala log" : "Escala lineal";
+    $("escala").setAttribute("aria-pressed", String(logaritmica));
+  };
+  pintarEscala();
+  $("escala").addEventListener("click", () => {
+    logaritmica = !logaritmica;
+    try { localStorage.setItem("escala", logaritmica ? "log" : "lineal"); } catch (e) { /* sin storage */ }
+    pintarEscala();
+    if (vigente) dibujar(vigente.p, vigente.v, true);
+  });
+
+  $("tema").addEventListener("click", () => {
+    const r = document.documentElement;
+    const oscuro = r.getAttribute("data-theme") === "dark" || (!r.hasAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+    r.setAttribute("data-theme", oscuro ? "light" : "dark");
+    try { localStorage.setItem("tema", oscuro ? "light" : "dark"); } catch (e) { /* sin storage */ }
+    if (vigente) dibujar(vigente.p, vigente.v, true);
+  });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (vigente) dibujar(vigente.p, vigente.v, true);
+  });
+  try { const t = localStorage.getItem("tema"); if (t) document.documentElement.setAttribute("data-theme", t); } catch (e) { /* sin storage */ }
+
+  function pintarOrden() {
+    $("orden-por").value = ordenPor;
+    $("orden-dir").textContent = ordenDir < 0 ? "↓ mayor" : "↑ menor";
+    $("orden-dir").title = ordenDir < 0 ? "Mayor puntaje primero" : "Menor puntaje primero";
+    try { localStorage.setItem("orden", JSON.stringify({ por: ordenPor, dir: ordenDir })); } catch (e) { /* sin storage */ }
+  }
+  $("orden-por").addEventListener("change", (e) => { ordenPor = e.target.value; pintarOrden(); ordenar(); pintarPares(); });
+  $("orden-dir").addEventListener("click", () => { ordenDir = -ordenDir; pintarOrden(); ordenar(); pintarPares(); });
+  pintarOrden();
+  // Sin pares con puntaje (solo gráficos de divergencias), no hay qué ordenar.
+  if (!D.pares.some((p) => !p.historial)) document.querySelector(".orden").hidden = true;
+
+  // Servida por `tools/divergencias_vivo.py`: el botón le pide al servidor
+  // que traiga las velas nuevas y rehaga la página, y se recarga en el mismo
+  // par y la misma temporalidad. En la página publicada no aparece.
+  if (D.actualizar) {
+    try {
+      const v = JSON.parse(sessionStorage.getItem("vista") || "null");
+      if (v && D.pares.some((p) => idDe(p) === v.par)) { par = v.par; tf = v.tf; }
+    } catch (e) { /* sin storage */ }
+    const b = $("actualizar");
+    b.hidden = false;
+    b.addEventListener("click", () => {
+      b.disabled = true;
+      b.textContent = "Actualizando…";
+      $("estado-velas").textContent = "Trayendo las velas nuevas y buscando sus divergencias…";
+      fetch(D.actualizar, { method: "POST" })
+        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error(r.error || "falló");
+          try { sessionStorage.setItem("vista", JSON.stringify({ par, tf })); } catch (e) { /* sin storage */ }
+          location.reload();
+        })
+        .catch((err) => {
+          b.disabled = false;
+          b.textContent = "Actualizar";
+          $("estado-velas").textContent = `No se pudo actualizar: ${err.message}`;
+        });
+    });
+  }
+
+  // En la página publicada: el botón trae de Binance las velas nuevas de BTC
+  // y ETH (las que cerraron desde que se armó la página) y busca sus
+  // divergencias acá, vela por vela, con el mismo detector que la corrida
+  // diaria (`graficos_divergencias.js`). No guarda nada: al recargar la
+  // página vuelve a lo publicado, y la base la sigue la corrida diaria.
+  const pasadas = D.pares.filter((p) => p.historial);
+  if (!D.actualizar && pasadas.length && window.Divergencias) {
+    const REGLAS = { "15m": "4h", "1h": "4h", "1M": "1w" };
+    const API = "https://data-api.binance.vision/api/v3/klines";
+    const Div = window.Divergencias;
+    // Velas cerradas desde `desdeSeg` (incluida), paginando de a mil.
+    async function velasNuevas(simbolo, intervalo, desdeSeg) {
+      const salida = [];
+      let desde = desdeSeg * 1000;
+      for (;;) {
+        const r = await fetch(`${API}?symbol=${simbolo}&interval=${intervalo}&startTime=${desde}&limit=1000`);
+        if (!r.ok) throw new Error(`Binance ${intervalo}: ${r.status}`);
+        const filas = await r.json();
+        const ahora = Date.now();
+        for (const f of filas) if (f[6] <= ahora) salida.push(f);
+        if (filas.length < 1000) break;
+        desde = filas[filas.length - 1][0] + 1;
+      }
+      return salida;
+    }
+    // Las velas publicadas más las nuevas (la última publicada se pide otra
+    // vez: Binance a veces la corrige).
+    function unir(b, filas) {
+      const S = { t: b.t.slice(), o: b.o.slice(), h: b.h.slice(), l: b.l.slice(), c: b.c.slice() };
+      for (const f of filas) {
+        const t = f[0] / 1000;
+        let i = S.t.length - 1;
+        while (i >= 0 && S.t[i] > t) i--;
+        const v = [+f[1], +f[2], +f[3], +f[4]];
+        if (i >= 0 && S.t[i] === t) { S.o[i] = v[0]; S.h[i] = v[1]; S.l[i] = v[2]; S.c[i] = v[3]; }
+        else if (i === S.t.length - 1) { S.t.push(t); S.o.push(v[0]); S.h.push(v[1]); S.l.push(v[2]); S.c.push(v[3]); }
+      }
+      return S;
+    }
+    const b = $("actualizar-vivo");
+    b.hidden = false;
+    b.addEventListener("click", async () => {
+      b.disabled = true;
+      const aviso = (txt) => { $("estado-velas").textContent = txt; };
+      let nuevas = 0;
+      try {
+        for (const p of pasadas) {
+          const nombre = p.simbolo.replace("USDT", "");
+          let diario = null;
+          for (const t of ["15m", "1h", "4h", "1d", "1w"]) {
+            if (!p.tfs[t]) continue;
+            aviso(`${nombre} ${TF[t]}: trayendo las velas nuevas…`);
+            const pub = await cargar(p, t);  // lo publicado, o lo ya actualizado acá
+            const filas = await velasNuevas(p.simbolo, t, pub.t[pub.t.length - 1]);
+            const S = unir(pub, filas);
+            const suma = S.t.length - pub.t.length;
+            nuevas += suma;
+            if (t === "1d") diario = S;
+            if (!suma) continue;
+            aviso(`${nombre} ${TF[t]}: buscando divergencias en ${suma} velas nuevas…`);
+            await new Promise((r) => setTimeout(r, 0));  // que se vea el aviso
+            const I = window.Indicadores.calcular(S, D.params);
+            const lista = Div.actualizar(S, I, REGLAS[t] || t, pub.divergencias, pub.t.length);
+            enVivo.set(idDe(p) + "|" + t, Object.assign({}, S, { divergencias: lista }));
+            Object.assign(p.tfs[t], { n: S.t.length, n_divergencias: lista.length });
+          }
+          if (p.tfs["1M"] && diario) {
+            const M = Div.mensual(diario);
+            const lista = Div.completas(M, window.Indicadores.calcular(M, D.params), "1w");
+            enVivo.set(idDe(p) + "|1M", Object.assign({}, M, { divergencias: lista }));
+            Object.assign(p.tfs["1M"], { n: M.t.length, n_divergencias: lista.length });
+          }
+        }
+        const hora = new Date().toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit", hour12: false });
+        pintarPares();
+        await mostrar(false);
+        aviso(nuevas ? `BTC y ETH al día: ${cuenta(nuevas)} velas nuevas desde la publicación, con sus divergencias (${hora}). Al recargar la página vuelve a lo publicado.`
+          : `BTC y ETH ya estaban al día (${hora}).`);
+      } catch (err) {
+        aviso(`No se pudo actualizar: ${err.message}`);
+      } finally {
+        b.disabled = false;
+      }
+    });
+  }
+
+  if (!LW) { $("grafico").innerHTML = '<p class="error">No cargó la librería de gráficos.</p>'; return; }
+  pintarPares();
+  pintarEstado();
+  mostrar(true);
+})();
+</script>
